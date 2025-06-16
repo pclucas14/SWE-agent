@@ -223,7 +223,7 @@ class SWEEnv:
         output = r.output
         self.logger.log(logging.TRACE, "Output:\n%s", output)  # type: ignore
         if check != "ignore" and r.exit_code != 0:
-            self.logger.error(f"{error_msg}:\n{output}")
+            self.logger.error(f"{error_msg}:\n{output}") # Test zshi for commit
             msg = f"Command {input!r} failed ({r.exit_code=}): {error_msg}"
             self.logger.error(msg)
             if check == "raise":
