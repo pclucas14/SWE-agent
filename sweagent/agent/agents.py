@@ -189,7 +189,13 @@ class RetryAgentConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-AgentConfig = Annotated[DefaultAgentConfig | RetryAgentConfig | ShellAgentConfig, Field(union_mode="left_to_right")]
+class MaxStepAgentConfig(DefaultAgentConfig):
+    """Same as DefaultAgentConfig but adds a hard step limit."""
+    max_steps: int = 50                 # default limit
+    type: Literal["max_step"] = "max_step"
+
+
+AgentConfig = Annotated[DefaultAgentConfig | RetryAgentConfig | ShellAgentConfig | MaxStepAgentConfig, Field(union_mode="left_to_right")]
 
 
 class _BlockedActionError(Exception):
@@ -238,6 +244,8 @@ class AbstractAgent:
 def get_agent_from_config(config: AgentConfig) -> AbstractAgent:
     if config.type == "default":
         return DefaultAgent.from_config(config)
+    elif config.type == "max_step":
+        return MaxStepAgent.from_config(config)
     elif config.type == "retry":
         return RetryAgent.from_config(config)
     elif config.type == "shell":
@@ -1276,3 +1284,57 @@ class DefaultAgent(AbstractAgent):
         # be the best submission instead of the last one, etc.), so we get it from the traj file
         data = self.get_trajectory_data()
         return AgentRunResult(info=data["info"], trajectory=data["trajectory"])
+
+
+class MaxStepAgent(DefaultAgent):
+    """DefaultAgent with a maximum-step budget."""
+
+    def __init__(self, *, max_steps: int, **kwargs):
+        super().__init__(**kwargs)
+        self._max_steps = max_steps
+
+    @classmethod
+    def from_config(cls, cfg: MaxStepAgentConfig) -> "MaxStepAgent":
+        cfg = cfg.model_copy(deep=True)
+        return cls(
+            max_steps=cfg.max_steps,
+            templates=cfg.templates,
+            tools=ToolHandler(cfg.tools),
+            history_processors=cfg.history_processors,
+            model=get_model(cfg.model, cfg.tools),
+            max_requeries=cfg.max_requeries,
+            name=cfg.name,
+            action_sampler_config=cfg.action_sampler,
+        )
+
+    def step(self) -> StepOutput:
+        # Check if we've reached the maximum steps before executing the step
+        current_step = len(self.trajectory) + 1
+        if current_step > self._max_steps:
+            assert self._env is not None
+            self._chook.on_step_start()
+
+            self.logger.info("=" * 25 + f" STEP {current_step} " + "=" * 25)
+            self.logger.info(f"Reached maximum steps limit ({self._max_steps})")
+            
+            step_output = StepOutput(
+                observation=f"Reached maximum steps limit of {self._max_steps}",
+                done=True,
+                exit_status="exit_max_steps",
+            )
+
+            # Follow the same pattern as parent class for proper bookkeeping
+            self.add_step_to_history(step_output)
+
+            self.info["submission"] = step_output.submission
+            self.info["exit_status"] = step_output.exit_status
+            self.info.update(self._get_edited_files_with_context(patch=step_output.submission or ""))
+            self.info["model_stats"] = self.model.stats.model_dump()
+
+            self.add_step_to_trajectory(step_output)
+
+            self._chook.on_step_done(step=step_output, info=self.info)
+            return step_output
+
+        # Execute the step normally
+        return super().step()
