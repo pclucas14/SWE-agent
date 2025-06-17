@@ -4,6 +4,7 @@ import copy
 import json
 import os
 import random
+import re
 import shlex
 import threading
 import time
@@ -14,6 +15,14 @@ from typing import Annotated, Any, Literal
 
 import litellm
 import litellm.types.utils
+from openai import AzureOpenAI
+import openai  # ← NEW: for exception classes
+from azure.identity import (
+    ChainedTokenCredential,
+    AzureCliCredential,
+    DefaultAzureCredential,
+    get_bearer_token_provider,
+)
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import ConfigDict, Field, SecretStr
 from swerex.exceptions import SwerexException
@@ -838,6 +847,127 @@ class LiteLLMModel(AbstractModel):
         return messages
 
 
+class AzureLLMModel(LiteLLMModel):
+    """
+    Azure implementation of LiteLLMModel.
+    Falls back on the Azure OpenAI SDK instead of `litellm.completion`.
+    """
+
+    # All deployments that are available via the public TRAPI endpoint
+    AZURE_SUPPORTED_MODELS = ["gpt-4o", "o3", "o3-mini", "o4-mini"]
+
+    _MODEL_META: dict[str, tuple[str, str, str]] = {
+        #  name      -> (version,               instance,       api_version)
+        "gpt-4o":  ("2024-05-13", "gcr/preview", "2024-10-21"),
+        "o3":      ("2025-04-16", "msrne/shared", "2025-04-01-preview"),
+        "o3-mini": ("2025-01-31", "msrne/shared", "2025-04-01-preview"),
+        "o4-mini": ("2025-04-16", "msrne/shared", "2025-04-01-preview"),
+    }
+
+    def __init__(self, args: GenericAPIModelConfig, tools: ToolConfig):
+        if args.name not in self.AZURE_SUPPORTED_MODELS:
+            msg = f"{args.name} not in supported Azure models {self.AZURE_SUPPORTED_MODELS}"
+            raise ValueError(msg)
+        super().__init__(args, tools)
+
+        version, instance, self._api_version = self._MODEL_META[self.config.name]
+        self._deployment_name = re.sub(r"[^a-zA-Z0-9-_]", "", f"{self.config.name}_{version}")
+        self._endpoint = f"https://trapi.research.microsoft.com/{instance}"
+
+        self._credential = get_bearer_token_provider(
+            ChainedTokenCredential(
+                AzureCliCredential(),
+                DefaultAzureCredential(
+                    exclude_cli_credential=True,
+                    exclude_environment_credential=True,
+                    exclude_shared_token_cache_credential=True,
+                    exclude_developer_cli_credential=True,
+                    exclude_powershell_credential=True,
+                    exclude_interactive_browser_credential=True,
+                    exclude_visual_studio_code_credentials=True,
+                    managed_identity_client_id=os.environ.get("DEFAULT_IDENTITY_CLIENT_ID"),
+                ),
+            ),
+            "api://trapi/.default",
+        )
+
+        self._azure_client = AzureOpenAI(
+            azure_endpoint=self._endpoint,
+            azure_ad_token_provider=self._credential,
+            api_version=self._api_version,
+        )
+
+    def _single_query(
+        self,
+        messages: list[dict[str, str]],
+        n: int | None = None,
+        temperature: float | None = None,
+    ) -> list[dict]:
+        self._sleep()
+
+        messages_no_cache_control = copy.deepcopy(messages)
+        for m in messages_no_cache_control:
+            if "cache_control" in m:
+                del m["cache_control"]
+
+        input_tokens = litellm.utils.token_counter(
+            messages=messages_no_cache_control,
+            model=self.config.name,
+        )
+        if self.model_max_input_tokens is None:
+            msg = (
+                f"No max input tokens found for model {self.config.name!r}. "
+                "If you are using a local model, you can set `max_input_token` in the model config to override this."
+            )
+            self.logger.warning(msg)
+        elif input_tokens > self.model_max_input_tokens > 0:
+            msg = f"Input tokens {input_tokens} exceed max tokens {self.model_max_input_tokens}"
+            raise ContextWindowExceededError(msg)
+
+        # Build Azure request arguments                                   #
+        azure_kwargs: dict[str, Any] = dict(
+            model=self._deployment_name,
+            messages=messages,
+            temperature=self.config.temperature if temperature is None else temperature,
+            top_p=self.config.top_p,
+            n=n or 1,
+        )
+        if self.tools.use_function_calling:
+            azure_kwargs["tools"] = self.tools.tools
+
+        # Call Azure OpenAI & basic error handling                        #
+        try:
+            response = self._azure_client.chat.completions.create(**azure_kwargs)  # type: ignore
+        except openai.error.InvalidRequestError as e:
+            # Mirror parent behaviour: treat context length errors specially
+            if "is longer than the model's context length" in str(e):
+                raise ContextWindowExceededError from e
+            raise
+        except openai.error.AuthenticationError as e:
+            raise ContentPolicyViolationError from e  # best available mapping
+
+        # Convert response → SWE-agent format                             #
+        outputs: list[dict] = []
+        for choice in response.choices:  # type: ignore[attr-defined]
+            out: dict[str, Any] = {"message": choice.message.content or ""}
+            if self.tools.use_function_calling and getattr(choice.message, "tool_calls", None):
+                out["tool_calls"] = [tc.model_dump() for tc in choice.message.tool_calls]  # type: ignore
+            outputs.append(out)
+
+        # Prefer server-reported token usage
+        if getattr(response, "usage", None) is not None and getattr(response.usage, "completion_tokens", None) is not None:
+            output_tokens = int(response.usage.completion_tokens or 0)
+        else:
+            # Fallback: approximate with litellm token counter
+            output_tokens = sum(
+                litellm.utils.token_counter(text=o["message"], model=self.config.name) for o in outputs
+            )
+
+        # NOTE: pricing for TRAPI models is unknown → record zero cost
+        self._update_stats(input_tokens=input_tokens, output_tokens=output_tokens, cost=0.0)
+        return outputs
+
+
 def get_model(args: ModelConfig, tools: ToolConfig) -> AbstractModel:
     """Returns correct model object given arguments and commands"""
     # Convert GenericAPIModelConfig to specific model config if needed
@@ -865,5 +995,7 @@ def get_model(args: ModelConfig, tools: ToolConfig) -> AbstractModel:
     elif args.name == "instant_empty_submit":
         assert isinstance(args, InstantEmptySubmitModelConfig), f"Expected {InstantEmptySubmitModelConfig}, got {args}"
         return InstantEmptySubmitTestModel(args, tools)
+    if isinstance(args, GenericAPIModelConfig) and args.name in AzureLLMModel.AZURE_SUPPORTED_MODELS:
+        return AzureLLMModel(args, tools)
     assert isinstance(args, GenericAPIModelConfig), f"Expected {GenericAPIModelConfig}, got {args}"
     return LiteLLMModel(args, tools)
