@@ -16,6 +16,7 @@ from typing_extensions import Self
 from sweagent.agent.problem_statement import ProblemStatementConfig, TextProblemStatement
 from sweagent.environment.repo import GithubRepoConfig, LocalRepoConfig, PreExistingRepoConfig
 from sweagent.environment.swe_env import EnvironmentConfig
+from sweagent.environment.hooks.onerepoonemodel_hook import OneRepoOneModelOneTimePatchHook
 from sweagent.utils.files import load_file
 from sweagent.utils.log import get_logger
 
@@ -394,6 +395,73 @@ class SWESmithInstances(BaseModel, AbstractInstanceSource):
         return f"swesmith_{self.path.stem}"
 
 
+class PatchEnabledSWESmithInstances(BaseModel, AbstractInstanceSource):  
+    """Load instances from SWE-smith with patch support."""  
+  
+    path: Path  
+  
+    deployment: DeploymentConfig = Field(  
+        default_factory=lambda: DockerDeploymentConfig(image="python:3.11"),  
+    )  
+    """Deployment configuration. Note that the image_name option is overwritten by the images specified in the task instances.  
+    """  
+  
+    filter: str = ".*"  
+    """Regular expression to filter the instances by instance id."""  
+    slice: str = ""  
+    """Select only a slice of the instances (after filtering by `filter`).  
+    Possible values are stop or start:stop or start:stop:step.  
+    (i.e., it behaves exactly like python's list slicing `list[slice]`).  
+    """  
+    shuffle: bool = False  
+    """Shuffle the instances (before filtering and slicing)."""  
+  
+    type: Literal["patch_swesmith"] = "patch_swesmith"  
+    """Discriminator for (de)serialization/CLI. Do not change."""  
+  
+    def get_instance_configs(self) -> list[BatchInstance]:  
+        def convert_instance_dict(instance_dict: dict[str, Any]) -> dict[str, Any]:  
+            instance_dict["id"] = instance_dict["instance_id"]  
+            assert "patch" in instance_dict, "Instance dict must contain 'patch' field for PatchEnabledSWESmithInstances"
+
+            instance_dict["base_commit"] = instance_dict["original_base_commit"]  
+            instance_dict["problem_statement"] = instance_dict.get("problem_statement", "")  
+            instance_dict["repo_name"] = "testbed"                
+            extra_fields = {"fail_to_pass": instance_dict["FAIL_TO_PASS"]}  
+            extra_fields["patch"] = instance_dict["patch"]  
+            instance_dict["extra_fields"] = extra_fields  
+            return instance_dict
+  
+        instance_dicts = load_file(self.path)  
+        simple_instances = []  
+          
+        for instance_dict in instance_dicts:  
+            converted_dict = convert_instance_dict(instance_dict)  
+            simple_instance = SimpleBatchInstance.model_validate(converted_dict)  
+              
+            batch_instance = simple_instance.to_full_batch_instance(self.deployment)  
+              
+            if "patch" in simple_instance.extra_fields:  
+                patch_hook = OneRepoOneModelOneTimePatchHook(
+                    patch_data=simple_instance.extra_fields["patch"],
+                    repo_name=simple_instance.repo_name
+                )
+                
+                # --- allow dynamic attribute on a pydantic model ---
+                if not hasattr(batch_instance.env, "hooks"):
+                    # bypass pydantic's __setattr__
+                    object.__setattr__(batch_instance.env, "hooks", [])
+                batch_instance.env.hooks.append(patch_hook)
+              
+            simple_instances.append(batch_instance)  
+          
+        return _filter_batch_items(simple_instances, filter_=self.filter, slice_=self.slice, shuffle=self.shuffle)  
+  
+    @property  
+    def id(self) -> str:  
+        return f"patch_swesmith_{self.path.stem}"
+
+
 BatchInstanceSourceConfig = (
-    InstancesFromHuggingFace | InstancesFromFile | SWEBenchInstances | ExpertInstancesFromFile | SWESmithInstances
+    InstancesFromHuggingFace | InstancesFromFile | SWEBenchInstances | ExpertInstancesFromFile | SWESmithInstances | PatchEnabledSWESmithInstances
 )
