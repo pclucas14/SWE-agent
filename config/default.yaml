@@ -2,6 +2,8 @@
 # This template is heavily inspired by anthropic's computer use demo, but you can use
 # it with any LM.
 agent:
+  type: default          # <-- new ─ tells Pydantic which variant to use
+  model: {}
   templates:
     system_template: |-
       You are a helpful assistant that can interact with a computer to solve tasks.
@@ -67,3 +69,4 @@ agent:
   history_processors:
     - type: cache_control
       last_n_messages: 2
+instances: {}
