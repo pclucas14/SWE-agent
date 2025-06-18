@@ -864,6 +864,9 @@ class AzureLLMModel(LiteLLMModel):
         "o4-mini": ("2025-04-16", "msrne/shared", "2025-04-01-preview"),
     }
 
+    # Models that don't support custom temperature or top_p
+    O3_MODELS = ["o3", "o3-mini", "o4-mini"]
+
     def __init__(self, args: GenericAPIModelConfig, tools: ToolConfig):
         if args.name not in self.AZURE_SUPPORTED_MODELS:
             msg = f"{args.name} not in supported Azure models {self.AZURE_SUPPORTED_MODELS}"
@@ -928,24 +931,27 @@ class AzureLLMModel(LiteLLMModel):
         azure_kwargs: dict[str, Any] = dict(
             model=self._deployment_name,
             messages=messages,
-            temperature=self.config.temperature if temperature is None else temperature,
-            top_p=self.config.top_p,
             n=n or 1,
         )
+        
+        # Only set temperature and top_p for models that support them
+        if self.config.name not in self.O3_MODELS:
+            azure_kwargs["temperature"] = self.config.temperature if temperature is None else temperature
+            azure_kwargs["top_p"] = self.config.top_p
+        
         if self.tools.use_function_calling:
             azure_kwargs["tools"] = self.tools.tools
 
         # Call Azure OpenAI & basic error handling                        #
         try:
             response = self._azure_client.chat.completions.create(**azure_kwargs)  # type: ignore
-        except openai.error.InvalidRequestError as e:
-            # Mirror parent behaviour: treat context length errors specially
+        except openai.BadRequestError as e:
             if "is longer than the model's context length" in str(e):
                 raise ContextWindowExceededError from e
             raise
-        except openai.error.AuthenticationError as e:
-            raise ContentPolicyViolationError from e  # best available mapping
-
+        except openai.OpenAIError:
+            raise
+    
         # Convert response → SWE-agent format                             #
         outputs: list[dict] = []
         for choice in response.choices:  # type: ignore[attr-defined]
