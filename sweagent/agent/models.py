@@ -854,7 +854,7 @@ class AzureLLMModel(LiteLLMModel):
     """
 
     # All deployments that are available via the public TRAPI endpoint
-    AZURE_SUPPORTED_MODELS = ["gpt-4o", "o3", "o3-mini", "o4-mini"]
+    AZURE_SUPPORTED_MODELS = ["gpt-4o", "o3", "o3-mini", "o4-mini", "gpt-4.1", "gpt-4.5-preview", "o1", "gpt-4.1-mini"]
 
     _MODEL_META: dict[str, tuple[str, str, str]] = {
         #  name      -> (version,               instance,       api_version)
@@ -862,6 +862,10 @@ class AzureLLMModel(LiteLLMModel):
         "o3":      ("2025-04-16", "msrne/shared", "2025-04-01-preview"),
         "o3-mini": ("2025-01-31", "msrne/shared", "2025-04-01-preview"),
         "o4-mini": ("2025-04-16", "msrne/shared", "2025-04-01-preview"),
+        "gpt-4.1": ("2025-04-14", "gcr/shared", "2025-04-01-preview"),
+        "gpt-4.5-preview": ("2025-02-27", "msrne/shared", "2025-04-01-preview"),
+        "o1": ("2024-12-17", "msrne/shared", "2025-04-01-preview"),
+        "gpt-4.1-mini": ("2025-04-14", "msrne/shared", "2025-04-01-preview"),
     }
 
     # Models that don't support custom temperature or top_p
@@ -874,7 +878,7 @@ class AzureLLMModel(LiteLLMModel):
         super().__init__(args, tools)
 
         version, instance, self._api_version = self._MODEL_META[self.config.name]
-        self._deployment_name = re.sub(r"[^a-zA-Z0-9-_]", "", f"{self.config.name}_{version}")
+        self._deployment_name = re.sub(r"[^a-zA-Z0-9._-]", "", f"{model_name}_{model_version}")
         self._endpoint = f"https://trapi.research.microsoft.com/{instance}"
 
         self._credential = get_bearer_token_provider(
