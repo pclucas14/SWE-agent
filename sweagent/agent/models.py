@@ -878,7 +878,7 @@ class AzureLLMModel(LiteLLMModel):
         super().__init__(args, tools)
 
         version, instance, self._api_version = self._MODEL_META[self.config.name]
-        self._deployment_name = re.sub(r"[^a-zA-Z0-9._-]", "", f"{model_name}_{model_version}")
+        self._deployment_name = re.sub(r"[^a-zA-Z0-9._-]", "", f"{self.config.name}_{version}")
         self._endpoint = f"https://trapi.research.microsoft.com/{instance}"
 
         self._credential = get_bearer_token_provider(
