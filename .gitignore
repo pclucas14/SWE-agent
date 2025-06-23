@@ -7,6 +7,9 @@ trajectories/**
 data/**
 *.env
 !tools/*
+logs
+.amltignore
+.amltconfig
 
 # -------- automatically generated files --------
 
