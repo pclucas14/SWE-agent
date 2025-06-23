@@ -953,6 +953,9 @@ class AzureLLMModel(LiteLLMModel):
             if "is longer than the model's context length" in str(e):
                 raise ContextWindowExceededError from e
             raise
+        except openai.RateLimitError as e:
+            # Let this bubble up for retry handling
+            raise
         except openai.OpenAIError:
             raise
     
@@ -976,6 +979,38 @@ class AzureLLMModel(LiteLLMModel):
         # NOTE: pricing for TRAPI models is unknown → record zero cost
         self._update_stats(input_tokens=input_tokens, output_tokens=output_tokens, cost=0.0)
         return outputs
+
+    def query(self, history: History, n: int = 1, temperature: float | None = None) -> list[dict] | dict:
+        messages = self._history_to_messages(history)
+
+        def retry_warning(retry_state: RetryCallState):
+            exception = retry_state.outcome.exception() if retry_state.outcome else None
+            if exception:
+                self.logger.warning(
+                    f"Retrying Azure query (attempt {retry_state.attempt_number}) due to {exception.__class__.__name__}: {exception}"
+                )
+
+        # Custom retry loop for Azure-specific errors
+        for attempt in Retrying(
+            stop=stop_after_attempt(self.config.retry.retries),
+            wait=wait_random_exponential(
+                min=self.config.retry.min_wait, max=self.config.retry.max_wait
+            ),
+            reraise=True,
+            retry=retry_if_not_exception_type((
+                ContextWindowExceededError,
+                CostLimitExceededError,
+                ModelConfigurationError,
+                openai.AuthenticationError,
+                openai.BadRequestError,  # retry on RateLimitError, but NOT on these
+                KeyboardInterrupt,
+            )),
+            before_sleep=retry_warning,
+        ):
+            with attempt:
+                outputs = self._single_query(messages, n=n, temperature=temperature)
+
+        return outputs if n > 1 else outputs[0]
 
 
 def get_model(args: ModelConfig, tools: ToolConfig) -> AbstractModel:
