@@ -1,6 +1,6 @@
 #!/bin/bash
 
-
+# This is used for r2e model generated trajectories on SWE-bench verified instances.
 python -m swebench.harness.run_evaluation \
     --dataset_name SWE-bench/SWE-bench_Verified \
     --predictions_path traj/r2egym-32b-agent-swebench-eval-20250602_124544.predictions.json \

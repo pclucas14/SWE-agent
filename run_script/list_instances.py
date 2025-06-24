@@ -51,7 +51,7 @@ def main() -> None:
         return
     # Print space-separated list, suitable for `--instance_ids` argument
     print(f"Found {len(ids)} instances for repo '{args.repo}':")
-    print(" ".join(ids))
+    print("|".join(ids))
 
 
 if __name__ == "__main__":
