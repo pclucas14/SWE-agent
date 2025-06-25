@@ -1,0 +1,39 @@
+### model
+model_name_or_path: Qwen/Qwen2.5-Coder-32B-instruct
+trust_remote_code: true
+
+### method
+stage: sft
+do_train: true
+finetuning_type: full
+deepspeed: run_agent/deepspeed/ds_z3_config.json  # choices: [ds_z0_config.json, ds_z2_config.json, ds_z3_config.json]
+
+### dataset
+dataset: automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10_train_traj
+# If you use a template, specify it here, e.g. template: qwen
+template: qwen
+cutoff_len: 32768
+max_samples: 100000
+overwrite_cache: true
+preprocessing_num_workers: 16
+
+### output
+logging_steps: 10
+save_strategy: epoch
+plot_loss: true
+overwrite_output_dir: true
+save_only_model: true       # Save only the model weights
+save_total_limit: 2         # Only keep 1 checkpoint
+
+### train
+flash_attn: fa2
+enable_liger_kernel: true
+use_unsloth_gc: true
+per_device_train_batch_size: 1 
+gradient_accumulation_steps: 1
+learning_rate: 1.0e-5
+num_train_epochs: 2
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+bf16: true
+ddp_timeout: 180000000

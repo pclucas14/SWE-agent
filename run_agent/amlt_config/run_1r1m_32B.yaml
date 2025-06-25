@@ -12,7 +12,7 @@ code:
   local_dir: /home/zhengyanshi/project/SWE-agent
 
 jobs:
-- name: automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10_train_traj_32B_cl32768_bs1x8_lr1e-5_ep5
+- name: automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10_train_traj_32B_cl32768_bs1x8_lr1e-5_ep2
   submit_args:
     env:
       _AZUREML_SINGULARITY_JOB_UAI: $AZUREML_SINGULARITY_JOB_UAI
@@ -37,4 +37,4 @@ jobs:
   - pip install deepspeed==0.16.7
   - pip install liger-kernel wandb
 
-  - llamafactory-cli train run_agent/llama_factory_config/run_1r1m_32B.yaml output_dir=$$AMLT_OUTPUT_DIR/ckpt/automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10_train_traj_32B_cl32768_bs1x8_lr1e-5_ep5
+  - llamafactory-cli train run_agent/llama_factory_config/run_1r1m_32B_ep2.yaml output_dir=$$AMLT_OUTPUT_DIR/ckpt/automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10_train_traj_32B_cl32768_bs1x8_lr1e-5_ep2
