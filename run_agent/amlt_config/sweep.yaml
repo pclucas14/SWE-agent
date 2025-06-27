@@ -1,0 +1,60 @@
+description: HP-sweep on default LLaMA-Factory recipe
+environment:
+  image: rocm6.4_ubuntu24.04_py3.12_pytorch2.6.0_flashattn_transformers:latest
+  registry: msrmtlacr.azurecr.io
+  env:
+    WANDB_API_KEY: $WANDB_API_KEY
+    WANDB_BASE_URL: $WANDB_BASE_URL
+    WANDB_DISABLED: "true" # disable wandb
+    HF_HUB_READ_TIMEOUT: 100
+  setup:
+    - sudo apt update && sudo apt install -y git python3-apt
+    - python -m pip install --upgrade pip
+    - python -m pip install ipython ipdb
+
+code:
+  local_dir: /home/zhengyanshi/project/SWE-agent
+
+search:
+  job_template:
+    # experiment name + user tag to avoid collisions
+    name: "{experiment_name:s}_{tag}_{auto:3s}"
+    submit_args:
+      env:
+        _AZUREML_SINGULARITY_JOB_UAI: $AZUREML_SINGULARITY_JOB_UAI
+    sku: G8
+    process_count_per_node: 1
+    command:
+      - export PATH="$$HOME/.local/bin:$$PATH"
+      - git clone --depth 1 https://github.com/hiyouga/LLaMA-Factory.git
+      - cd LLaMA-Factory
+      - pip install -e ".[torch,metrics]"
+      - pip install deepspeed==0.16.7 liger-kernel wandb
+      - cd ..
+      - |
+        OUT_DIR=$$AMLT_OUTPUT_DIR/ckpt/{tag}_cl{cutoff_len}_bs{bs}_lr{lr}_ep{epochs}
+        llamafactory-cli train run_agent/llama_factory_config/default.yaml \
+          $EXTRA_ARGS \
+          learning_rate={lr} \
+          num_train_epochs={epochs} \
+          cutoff_len={cutoff_len} \
+          per_device_train_batch_size={bs} \
+          output_dir=$$OUT_DIR
+  type: hyperdrive
+  sampling: random
+  max_trials: 24           # adjust as needed
+  parallel_trials: 6
+
+  params:    # swept hyper-parameters
+    - name: lr
+      values: choice(5.0e-4, 1.0e-4, 5.0e-5, 1.0e-5)
+    - name: epochs
+      values: choice(2, 3, 5)
+    - name: bs
+      values: [1]
+    - name: cutoff_len
+      values: choice(32768, 131072)
+
+    # Add tag as a parameter
+    - name: tag
+      values: ["1r1m_astropy_o3"]

@@ -3,6 +3,8 @@ environment:
   image: rocm6.4_ubuntu24.04_py3.12_pytorch2.6.0_flashattn_transformers:latest
   registry: msrmtlacr.azurecr.io
   env:
+    WANDB_API_KEY: $WANDB_API_KEY
+    WANDB_BASE_URL: $WANDB_BASE_URL
     WANDB_DISABLED: "true" # disable wandb
     HF_HUB_READ_TIMEOUT: 100
   setup:

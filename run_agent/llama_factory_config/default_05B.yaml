@@ -1,5 +1,5 @@
 ### model
-model_name_or_path: Qwen/Qwen2.5-Coder-32B-instruct
+model_name_or_path: Qwen/Qwen2.5-0.5B-Instruct
 trust_remote_code: true
 
 ### method
@@ -10,8 +10,6 @@ deepspeed: run_agent/deepspeed/ds_z3_config.json  # choices: [ds_z0_config.json,
 
 ### dataset
 dataset: automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10_train_traj
-# If you use a template, specify it here, e.g. template: qwen
-template: qwen
 cutoff_len: 32768
 max_samples: 100000
 overwrite_cache: true
@@ -31,7 +29,7 @@ enable_liger_kernel: true
 use_unsloth_gc: true
 per_device_train_batch_size: 1 
 gradient_accumulation_steps: 1
-learning_rate: 1.0e-5·
+learning_rate: 1.0e-5
 num_train_epochs: 5
 lr_scheduler_type: cosine
 warmup_ratio: 0.1
