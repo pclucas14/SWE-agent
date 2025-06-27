@@ -8,7 +8,7 @@ set -euo pipefail
 # --- user-controlled settings -------------------------------------------------
 INSTANCE_IDS="astropy__astropy-12907|astropy__astropy-13033|astropy__astropy-13236|astropy__astropy-13398|astropy__astropy-13453|astropy__astropy-13579|astropy__astropy-13977|astropy__astropy-14096|astropy__astropy-14182|astropy__astropy-14309|astropy__astropy-14365|astropy__astropy-14369|astropy__astropy-14508|astropy__astropy-14539|astropy__astropy-14598|astropy__astropy-14995|astropy__astropy-7166|astropy__astropy-7336|astropy__astropy-7606|astropy__astropy-7671|astropy__astropy-8707|astropy__astropy-8872"
 
-MODEL_NAME="openai/qwen32b_1r1m_astropy_o3_sft_cl32768_bs1x8_lr1e-5_ep5"     # <-- only change here
+MODEL_NAME="openai/SWE-bench/SWE-agent-LM-32B"     # <-- only change here
 USER_RUN_ROOT="trajectories/zhengyanshi@microsoft.com"
 OPENAI_API_BASE=http://127.0.0.1:8000/v1
 OPENAI_API_KEY=LOCAL
@@ -38,8 +38,7 @@ for i in {1..3}; do
     --instances.shuffle True \
     --instances.type swe_bench \
     --instances.subset verified \
-    --instances.split test \
-    --instances.filter "$INSTANCE_IDS"
+    --instances.split test
   
   echo "Completed agent batch iteration $i/3"
 done

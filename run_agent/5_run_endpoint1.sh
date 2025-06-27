@@ -4,7 +4,7 @@ docker run --runtime=nvidia --gpus=all \
     --env "CUDA_VISIBLE_DEVICES=0,1,2,3" \
     --ipc=host \
     vllm/vllm-openai:latest \
-    --model all-hands/openhands-lm-32b-v0.1 \
+    --model SWE-bench/SWE-agent-LM-32B \
     --trust-remote-code \
     --tensor-parallel-size 4 \
     --enable-prefix-caching \
