@@ -1315,12 +1315,16 @@ class MaxStepAgent(DefaultAgent):
             self._chook.on_step_start()
 
             self.logger.info("=" * 25 + f" STEP {current_step} " + "=" * 25)
-            self.logger.info(f"Reached maximum steps limit ({self._max_steps})")
-            
-            step_output = StepOutput(
-                observation=f"Reached maximum steps limit of {self._max_steps}",
-                done=True,
-                exit_status="exit_max_steps",
+            self.logger.info(f"Reached maximum steps limit ({self._max_steps}). Attempting auto submission.")
+
+            # Attempt auto submission when max steps reached
+            step_output = self.attempt_autosubmission_after_error(
+                StepOutput(
+                    thought=f"Reached maximum steps limit of {self._max_steps}",
+                    exit_status="exit_max_steps",
+                    output=f"Reached maximum steps limit of {self._max_steps}",
+                    done=True,
+                )
             )
 
             # Follow the same pattern as parent class for proper bookkeeping
