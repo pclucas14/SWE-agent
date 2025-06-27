@@ -869,7 +869,7 @@ class AzureLLMModel(LiteLLMModel):
     }
 
     # Models that don't support custom temperature or top_p
-    O3_MODELS = ["o3", "o3-mini", "o4-mini"]
+    NOT_TEMPERATURE_MODELS = ["o1", "o3", "o3-mini", "o4-mini"]
 
     def __init__(self, args: GenericAPIModelConfig, tools: ToolConfig):
         if args.name not in self.AZURE_SUPPORTED_MODELS:
@@ -939,7 +939,7 @@ class AzureLLMModel(LiteLLMModel):
         )
         
         # Only set temperature and top_p for models that support them
-        if self.config.name not in self.O3_MODELS:
+        if self.config.name not in self.NOT_TEMPERATURE_MODELS:
             azure_kwargs["temperature"] = self.config.temperature if temperature is None else temperature
             azure_kwargs["top_p"] = self.config.top_p
         
