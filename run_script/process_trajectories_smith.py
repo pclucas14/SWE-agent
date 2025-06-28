@@ -279,7 +279,7 @@ Example:
         print(f"\nDataset saved to: {output_path}")
 
         # Also save as JSON for inspection
-        json_output = output_path.with_suffix('.json')
+        json_output = output_path.parent / (output_path.name + '.json')
         dataset.to_json(str(json_output))
         print(f"Dataset also saved as JSON: {json_output}")
 
