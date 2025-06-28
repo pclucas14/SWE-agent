@@ -31,7 +31,7 @@ enable_liger_kernel: true
 use_unsloth_gc: true
 per_device_train_batch_size: 1 
 gradient_accumulation_steps: 1
-learning_rate: 1.0e-5·
+learning_rate: 1.0e-5
 num_train_epochs: 5
 lr_scheduler_type: cosine
 warmup_ratio: 0.1
