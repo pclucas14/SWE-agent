@@ -18,28 +18,27 @@ MAX_WORKERS=32
 # ------------------------------------------------------------------------------
 
 # Compute slug used inside run directory names, e.g. openai--SWE-bench--SWE-agent-LM-32B
-# MODEL_SLUG=$(echo "$MODEL_NAME" | tr '/' '--')
 MODEL_SLUG=$(echo "$MODEL_NAME" | sed 's|/|--|g')
 
 # 1. Run the agent batch 3 times
 for i in {1..3}; do
   echo "Running agent batch iteration $i/3..."
-  # sweagent run-batch \
-  #   --num_workers ${MAX_WORKERS} \
-  #   --config agent/1r1m.yaml \
-  #   --suffix ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i} \
-  #   --agent.type max_step \
-  #   --agent.model.name "$MODEL_NAME" \
-  #   --agent.model.api_base "$OPENAI_API_BASE" \
-  #   --agent.model.api_key  "$OPENAI_API_KEY" \
-  #   --agent.model.per_instance_cost_limit 0 \
-  #   --agent.model.total_cost_limit 0 \
-  #   --agent.model.max_input_tokens $MAX_INPUT_TOKENS \
-  #   --agent.max_steps $MAX_STEPS \
-  #   --instances.shuffle True \
-  #   --instances.type swe_bench \
-  #   --instances.subset verified \
-  #   --instances.split test
+  sweagent run-batch \
+    --num_workers ${MAX_WORKERS} \
+    --config agent/1r1m.yaml \
+    --suffix ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i} \
+    --agent.type max_step \
+    --agent.model.name "$MODEL_NAME" \
+    --agent.model.api_base "$OPENAI_API_BASE" \
+    --agent.model.api_key  "$OPENAI_API_KEY" \
+    --agent.model.per_instance_cost_limit 0 \
+    --agent.model.total_cost_limit 0 \
+    --agent.model.max_input_tokens $MAX_INPUT_TOKENS \
+    --agent.max_steps $MAX_STEPS \
+    --instances.shuffle True \
+    --instances.type swe_bench \
+    --instances.subset verified \
+    --instances.split test
   
   echo "Completed agent batch iteration $i/3"
 done

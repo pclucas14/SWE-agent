@@ -18,7 +18,7 @@ MAX_WORKERS=32
 # ------------------------------------------------------------------------------
 
 # Compute slug used inside run directory names, e.g. openai--SWE-bench--SWE-agent-LM-32B
-MODEL_SLUG=$(echo "$MODEL_NAME" | tr '/' '--')
+MODEL_SLUG=$(echo "$MODEL_NAME" | sed 's|/|--|g')
 
 # 1. Run the agent batch 3 times
 for i in {1..3}; do
