@@ -1,0 +1,136 @@
+{
+    "pylint-dev__pylint": {
+        "file_name": "automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10/pylint-dev__pylint.json",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant",
+            "system_tag": "system",
+            "observation_tag": "tool",
+            "function_tag": "function_call"
+        }
+    },
+    "astropy__astropy.26d14786": {
+        "file_name": "automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10/astropy__astropy.26d14786.json",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant",
+            "system_tag": "system",
+            "observation_tag": "tool",
+            "function_tag": "function_call"
+        }
+    },
+    "R2E-Gym/R2EGym-SFT-Trajectories": {
+        "hf_hub_url": "R2E-Gym/R2EGym-SFT-Trajectories",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant",
+            "system_tag": "system"
+        }
+    },
+    "R2E-Gym/R2EGym-TestingAgent-SFT-Trajectories": {
+        "hf_hub_url": "R2E-Gym/R2EGym-TestingAgent-SFT-Trajectories",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant",
+            "system_tag": "system"
+        }
+    },
+    "R2E-Gym/R2EGym-Verifier-Trajectories": {
+        "hf_hub_url": "R2E-Gym/R2EGym-Verifier-Trajectories",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant",
+            "system_tag": "system"
+        }
+    },
+    "ZhengyanShi/Poutine-OpenHands-SFT-Trajectories": {
+        "hf_hub_url": "ZhengyanShi/Poutine-OpenHands-SFT-Trajectories",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages",
+            "tools": "tools"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant",
+            "system_tag": "system"
+        }
+    },
+    "ZhengyanShi/Poutine-R2EGym-SFT-Trajectories": {
+        "hf_hub_url": "ZhengyanShi/Poutine-R2EGym-SFT-Trajectories",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages",
+            "tools": "tools"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant",
+            "system_tag": "system"
+        }
+    },
+    "SWE-Gym/OpenHands-SFT-Trajectories": {
+        "hf_hub_url": "SWE-Gym/OpenHands-SFT-Trajectories",
+        "split": "train.success.oss",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant",
+            "system_tag": "system"
+        }
+    },
+    "SWE-bench/SWE-smith-trajectories": {
+        "hf_hub_url": "SWE-bench/SWE-smith-trajectories",
+        "split": "train",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant",
+            "system_tag": "system"
+        }
+    }
+}
