@@ -130,21 +130,23 @@ def extract_agent_config(trajectories_folder):
     return os.path.basename(trajectories_folder.rstrip('/'))
 
 
-def process_trajectories(eval_file_path, trajectories_folder, dataset_name):
+def process_trajectories(eval_file_path, trajectories_folder, folder_path, repo_name):
     """
     Main function to process evaluation results and extract trajectory histories.
     
     Args:
         eval_file_path (str): Path to evaluation results JSON file
         trajectories_folder (str): Path to trajectories folder
-        dataset_name (str): Name for the output dataset
+        folder_path (str): Folder path for output
+        repo_name (str): Repository name for output file
         
     Returns:
         Dataset: HuggingFace dataset with trajectory data
     """
     print(f"Processing evaluation results from: {eval_file_path}")
     print(f"Processing trajectories from: {trajectories_folder}")
-    print(f"Dataset name: {dataset_name}")
+    print(f"Output folder: {folder_path}")
+    print(f"Repository name: {repo_name}")
     print("-" * 80)
     
     # Extract agent config from trajectories folder path
@@ -192,16 +194,16 @@ def main():
         epilog="""
 Example:
   python process_trajectories.py \\
-    --eval-file default__o3__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps.1r1m_eval.json \\
     --trajectories-folder trajectories/zhengyanshi@microsoft.com/default__o3__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps \\
-    --dataset-name my_experiment
+    --folder-path my_experiment \\
+    --repo-name astropy
         """
     )
 
     parser.add_argument(
         '--eval-file',
-        required=True,
-        help='Path to evaluation results JSON file containing resolved_ids'
+        default=None,
+        help='Path to evaluation results JSON file containing resolved_ids (DEPRECATED: if not provided, will use trajectories-folder + /results.json)'
     )
     
     parser.add_argument(
@@ -211,12 +213,23 @@ Example:
     )
     
     parser.add_argument(
-        '--dataset-name',
+        '--folder-path',
         required=True,
-        help='Name for the output dataset (will have "_train_traj" suffix added)'
+        help='Folder path for the output dataset'
+    )
+    
+    parser.add_argument(
+        '--repo-name',
+        required=True,
+        help='Repository name for the output file'
     )
     
     args = parser.parse_args()
+    
+    # Auto-derive eval file path if not provided
+    if args.eval_file is None:
+        args.eval_file = os.path.join(args.trajectories_folder, 'results.json')
+        print(f"No eval file specified, using: {args.eval_file}")
     
     # Validate inputs
     if not os.path.exists(args.eval_file):
@@ -228,7 +241,7 @@ Example:
         sys.exit(1)
     
     # Process trajectories
-    dataset = process_trajectories(args.eval_file, args.trajectories_folder, args.dataset_name)
+    dataset = process_trajectories(args.eval_file, args.trajectories_folder, args.folder_path, args.repo_name)
     
     if dataset is None:
         print("No dataset created due to errors or no data")
@@ -255,15 +268,12 @@ Example:
                 print(f"First messages preview: {content_preview}...")
     
     # Save dataset
-    output_name = f"{args.dataset_name}_train_traj"
-
-    # --- new: ensure everything goes into ./data ---------------------------------
-    output_dir = Path("data")           # default output root
+    # Create output directory structure: data/folder_path/repo_name
+    output_dir = Path("data") / args.folder_path
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    output_path = output_dir / output_name
-    # ------------------------------------------------------------------------------
-
+    output_path = output_dir / args.repo_name
+    
     try:
         dataset.save_to_disk(str(output_path))
         print(f"\nDataset saved to: {output_path}")
