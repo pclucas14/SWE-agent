@@ -16,8 +16,8 @@ def parse_model_name(model_name: str) -> str:
 
 def find_result_files(results_path: str, model_slug: str) -> List[str]:
     """Find all result files matching the model slug."""
-    pattern = os.path.join(results_path, "**", f"*{model_slug}*.json")
-    files = glob.glob(pattern, recursive=True)
+    pattern = os.path.join(results_path, f"*{model_slug}*.json")
+    files = glob.glob(pattern, recursive=False)
     # Filter out analysis files
     filtered_files = [f for f in files if not f.endswith('_analysis.json')]
     return sorted(filtered_files)

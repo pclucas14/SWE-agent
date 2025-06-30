@@ -82,3 +82,7 @@ for i in {1..3}; do
   
   echo "Completed evaluation for iteration $i/3"
 done
+
+python run_script/analyze_results.py \
+    --results_path . \
+    --model_name $MODEL_SLUG
