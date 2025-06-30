@@ -1,4 +1,16 @@
 {
+    "pylint-dev__pylint.1f8c4d9e_cp": {
+        "file_name": "continued_pretraining/pylint-dev__pylint.1f8c4d9e_cp.json",
+        "columns": {
+            "prompt": "text"
+        }
+    },
+    "astropy__astropy.26d14786_cp": {
+        "file_name": "continued_pretraining/astropy__astropy.26d14786_cp.json",
+        "columns": {
+            "prompt": "text"
+        }
+    },
     "pylint-dev__pylint.1f8c4d9e": {
         "file_name": "automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10/pylint-dev__pylint.1f8c4d9e.json",
         "formatting": "sharegpt",
