@@ -7,14 +7,14 @@ source .env
 set +a  # turn off automatic export
 
 DATASET="pylint-dev__pylint.1f8c4d9e_cp"
-# DATASET="astropy__astropy.26d14786_cp"
+DATASET="astropy__astropy.26d14786_cp"
 MODEL="Qwen/Qwen2.5-Coder-32B-instruct"
 # MODEL="SWE-bench/SWE-agent-LM-32B"
 MODEL_SLUG=$(echo "$MODEL" | sed 's|/|--|g')
 EPOCH=1
 LEARNING_RATE=1e-5
 CONTEXT_LENGTH=32768
-JOB_NAME=":run_1r1m_32B=run_cp_32B_$DATASET"
+JOB_NAME=":run_1r1m_32B=run_cp_${MODEL_SLUG}_${DATASET}"
 EXPERIMENT_NAME="${MODEL_SLUG}_cl${CONTEXT_LENGTH}_lr${LEARNING_RATE}_ep${EPOCH}_$DATASET"
 
 amlt run run_agent/amlt_config/run_1r1m_32B_cp.yaml $JOB_NAME $EXPERIMENT_NAME \
