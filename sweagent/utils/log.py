@@ -136,7 +136,7 @@ def remove_file_handler(id_: str) -> None:
     handler = _ADDITIONAL_HANDLERS.pop(id_)
     with _LOG_LOCK:
         # Lock because other thread might be modifying the _SET_UP_LOGGERS set
-        for log_name in _SET_UP_LOGGERS:
+        for log_name in list(_SET_UP_LOGGERS):
             logger = logging.getLogger(log_name)
             logger.removeHandler(handler)
 
