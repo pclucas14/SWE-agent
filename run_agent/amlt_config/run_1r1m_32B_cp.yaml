@@ -1,0 +1,42 @@
+description: Train Qwen 3 Coder 32B Model on 1R1M dataset
+environment:
+  image: rocm6.4_ubuntu24.04_py3.12_pytorch2.6.0_flashattn_transformers:latest
+  registry: msrmtlacr.azurecr.io
+  env:
+    WANDB_API_KEY: $WANDB_API_KEY
+    WANDB_BASE_URL: $WANDB_BASE_URL
+    WANDB_DISABLED: "true" # disable wandb
+    HF_HUB_READ_TIMEOUT: 100
+  setup:
+    - sudo apt update && sudo apt install -y git python3-apt
+
+code:
+  local_dir: /home/zhengyanshi/project/SWE-agent
+
+jobs:
+- name: run_1r1m_32B
+  submit_args:
+    env:
+      _AZUREML_SINGULARITY_JOB_UAI: $AZUREML_SINGULARITY_JOB_UAI
+  sku: G8
+  process_count_per_node: 1 # 8 # 4 GPUs. 
+  command:
+  - cat /opt/rocm/.info/version
+  - rocm-smi
+  - rocm-smi --showdriverversion
+  - echo $$PATH
+  - echo $$LD_LIBRARY_PATH
+  - echo $$AMLT_OUTPUT_DIR
+  - env
+
+  - export PATH="$$HOME/.local/bin:$$PATH"
+  - python -m pip install --upgrade pip
+  - python -m pip install ipython ipdb
+  - git clone --depth 1 https://github.com/hiyouga/LLaMA-Factory.git
+  - cd LLaMA-Factory
+  - pip install -e ".[torch,metrics]"
+  - cd ..
+  - pip install deepspeed==0.16.7
+  - pip install liger-kernel wandb
+
+  - llamafactory-cli train run_agent/llama_factory_config/run_1r1m_32B_cp.yaml $EXTRA_ARGS output_dir=$$AMLT_OUTPUT_DIR

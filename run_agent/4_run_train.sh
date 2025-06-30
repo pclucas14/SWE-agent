@@ -10,8 +10,8 @@ DATASET="pylint-dev__pylint.1f8c4d9e"
 DATASET="astropy__astropy.26d14786"
 # MODEL="Qwen/Qwen2.5-Coder-32B-instruct"
 MODEL="SWE-bench/SWE-agent-LM-32B"
-MODEL_SLUG=$(echo "$MODEL_NAME" | sed 's|/|--|g')
-EPOCH=5
+MODEL_SLUG=$(echo "$MODEL" | sed 's|/|--|g')
+EPOCH=2
 LEARNING_RATE=1e-5
 CONTEXT_LENGTH=32768
 JOB_NAME=":run_1r1m_32B=run_1r1m_32B_$DATASET"

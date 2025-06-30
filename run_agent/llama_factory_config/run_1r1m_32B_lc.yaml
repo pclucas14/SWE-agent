@@ -26,7 +26,7 @@ save_strategy: epoch
 plot_loss: true
 overwrite_output_dir: true
 save_only_model: true       # Save only the model weights
-save_total_limit: 2         # Only keep 1 checkpoint
+save_total_limit: 1         # Only keep 1 checkpoint
 
 ### train
 flash_attn: fa2
