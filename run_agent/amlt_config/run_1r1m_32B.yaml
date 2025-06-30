@@ -39,4 +39,4 @@ jobs:
   - pip install deepspeed==0.16.7
   - pip install liger-kernel wandb
 
-  - llamafactory-cli train run_agent/llama_factory_config/run_1r1m_32B.yaml $EXTRA_ARGS output_dir=$$AMLT_OUTPUT_DIR/ckpt
+  - llamafactory-cli train run_agent/llama_factory_config/run_1r1m_32B.yaml $EXTRA_ARGS output_dir=$$AMLT_OUTPUT_DIR
