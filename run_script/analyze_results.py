@@ -27,21 +27,24 @@ def load_result_file(filepath: str) -> Dict:
     with open(filepath, 'r') as f:
         return json.load(f)
 
-def load_swebench_dataset(dataset_name: str = "princeton-nlp/SWE-bench_Verified", split: str = "test") -> Dict[str, str]:
-    """Load SWE-bench dataset and return instance_id to repo mapping."""
+def load_swebench_dataset(dataset_name: str = "princeton-nlp/SWE-bench_Verified", split: str = "test") -> Tuple[Dict[str, str], Dict[str, int]]:
+    """Load SWE-bench dataset and return instance_id to repo mapping and repo to total count mapping."""
     try:
         from swebench.harness.utils import load_swebench_dataset
         dataset = load_swebench_dataset(dataset_name, split)
         
         # Create mapping from instance_id to repo
         instance_to_repo = {}
+        repo_to_total_count = defaultdict(int)
+        
         for item in dataset:
             instance_to_repo[item['instance_id']] = item['repo']
+            repo_to_total_count[item['repo']] += 1
         
-        return instance_to_repo
+        return instance_to_repo, dict(repo_to_total_count)
     except ImportError:
         print("Warning: swebench not available. Using instance_id for repo mapping.")
-        return {}
+        return {}, {}
 
 def extract_repo_from_instance_id(instance_id: str) -> str:
     """Extract repo name from instance_id as fallback."""
@@ -49,21 +52,10 @@ def extract_repo_from_instance_id(instance_id: str) -> str:
         return instance_id.split('__')[0]
     return instance_id
 
-def calculate_repo_level_resolved_rates(resolved_ids: List[str], completed_ids: List[str], instance_to_repo: Dict[str, str]) -> Dict:
-    """Calculate repository-level resolved rates properly."""
+def calculate_repo_level_resolved_rates(resolved_ids: List[str], completed_ids: List[str], instance_to_repo: Dict[str, str], repo_to_total_count: Dict[str, int] = None) -> Dict:
+    """Calculate repository-level resolved rates using dataset totals as denominator."""
     # Group instances by repo
-    repo_to_completed = defaultdict(set)
     repo_to_resolved = defaultdict(set)
-    
-    # Process completed instances
-    for instance_id in completed_ids:
-        if instance_to_repo:
-            repo = instance_to_repo.get(instance_id)
-        else:
-            repo = extract_repo_from_instance_id(instance_id)
-        
-        if repo:
-            repo_to_completed[repo].add(instance_id)
     
     # Process resolved instances
     for instance_id in resolved_ids:
@@ -75,19 +67,16 @@ def calculate_repo_level_resolved_rates(resolved_ids: List[str], completed_ids: 
         if repo:
             repo_to_resolved[repo].add(instance_id)
     
-    # Calculate per-repo resolved rates
+    # Calculate per-repo resolved rates using dataset totals
     repo_resolved_rates = {}
-    all_repos = set(repo_to_completed.keys()) | set(repo_to_resolved.keys())
     
+    # Use dataset totals as completed_count
+    all_repos = set(repo_to_total_count.keys())
     for repo in all_repos:
-        completed_count = len(repo_to_completed[repo])
+        total_count = repo_to_total_count[repo]
         resolved_count = len(repo_to_resolved[repo])
-        
-        if completed_count > 0:
-            repo_resolved_rates[repo] = resolved_count / completed_count
-        else:
-            repo_resolved_rates[repo] = 0.0
-    
+        repo_resolved_rates[repo] = resolved_count / total_count if total_count > 0 else 0.0
+
     # Calculate overall statistics
     if repo_resolved_rates:
         average_repo_resolved_rate = np.mean(list(repo_resolved_rates.values()))
@@ -100,11 +89,11 @@ def calculate_repo_level_resolved_rates(resolved_ids: List[str], completed_ids: 
         'repo_resolved_rates': repo_resolved_rates,
         'average_repo_resolved_rate': average_repo_resolved_rate,
         'std_repo_resolved_rate': std_repo_resolved_rate,
-        'total_repos': len(all_repos),
-        'repo_names': sorted(list(all_repos))
+        'total_repos': len(repo_resolved_rates),
+        'repo_names': sorted(list(repo_resolved_rates.keys()))
     }
 
-def analyze_single_run(result_data: Dict, instance_to_repo: Dict[str, str]) -> Dict:
+def analyze_single_run(result_data: Dict, instance_to_repo: Dict[str, str], repo_to_total_count: Dict[str, int] = None) -> Dict:
     """Analyze a single run's results."""
     # Basic metrics
     metrics = {
@@ -127,12 +116,13 @@ def analyze_single_run(result_data: Dict, instance_to_repo: Dict[str, str]) -> D
     resolved_ids = result_data.get('resolved_ids', [])
     completed_ids = result_data.get('completed_ids', [])
     
-    repo_stats = calculate_repo_level_resolved_rates(resolved_ids, completed_ids, instance_to_repo)
+    repo_stats = calculate_repo_level_resolved_rates(resolved_ids, completed_ids, instance_to_repo, repo_to_total_count)
     metrics['repo_level'] = repo_stats
     
     return metrics
 
-def compute_aggregated_stats(all_metrics: List[Dict]) -> Dict:
+
+def compute_aggregated_stats(all_metrics: List[Dict], repo_to_total_count: Dict[str, int]) -> Dict:
     """Compute mean and std across multiple runs."""
     if not all_metrics:
         return {}
@@ -176,7 +166,7 @@ def compute_aggregated_stats(all_metrics: List[Dict]) -> Dict:
         if 'repo_level' in metrics and 'repo_resolved_rates' in metrics['repo_level']:
             for repo, rate in metrics['repo_level']['repo_resolved_rates'].items():
                 repo_rate_collections[repo].append(rate)
-    
+
     # Compute mean and std for each repo
     per_repo_stats = {}
     for repo in sorted(repo_rate_collections.keys()):
@@ -184,12 +174,14 @@ def compute_aggregated_stats(all_metrics: List[Dict]) -> Dict:
         per_repo_stats[repo] = {
             'mean': float(np.mean(rates)),
             'std': float(np.std(rates)),
-            'num_runs': len(rates)
+            'num_runs': len(rates),
+            'total_instances': repo_to_total_count.get(repo, 0)
         }
     
     aggregated['per_repo_resolved_rate_stats'] = per_repo_stats
     
     return aggregated
+
 
 def main():
     parser = argparse.ArgumentParser(description='Analyze SWE-agent evaluation results')
@@ -221,8 +213,9 @@ def main():
     
     # Load SWE-bench dataset for repo mapping
     print("Loading SWE-bench dataset...")
-    instance_to_repo = load_swebench_dataset(args.dataset_name, args.split)
+    instance_to_repo, repo_to_total_count = load_swebench_dataset(args.dataset_name, args.split)
     print(f"Loaded {len(instance_to_repo)} instance-to-repo mappings")
+    print(f"Loaded {len(repo_to_total_count)} repo total counts")
     
     # Analyze each run
     all_metrics = []
@@ -233,7 +226,7 @@ def main():
         
         try:
             result_data = load_result_file(filepath)
-            metrics = analyze_single_run(result_data, instance_to_repo)
+            metrics = analyze_single_run(result_data, instance_to_repo, repo_to_total_count)
             all_metrics.append(metrics)
             individual_results[f'run_{i}'] = metrics
             
@@ -254,13 +247,14 @@ def main():
     
     # Compute aggregated statistics
     print(f"\nComputing aggregated statistics across {len(all_metrics)} runs...")
-    aggregated_stats = compute_aggregated_stats(all_metrics)
+    aggregated_stats = compute_aggregated_stats(all_metrics, repo_to_total_count)
     
     # Print summary
     print(f"\nSUMMARY:")
     print(f"  Average instance-level resolved rate: {aggregated_stats.get('resolved_rate_mean', 0):.3f} ± {aggregated_stats.get('resolved_rate_std', 0):.3f}")
     print(f"  Average repo-level resolved rate: {aggregated_stats.get('repo_resolved_rate_mean', 0):.3f} ± {aggregated_stats.get('repo_resolved_rate_std', 0):.3f}")
     print(f"  Total unique repositories: {aggregated_stats.get('total_unique_repos', 0)}")
+    print(f"\nNote: Repo-level rates now use dataset totals as denominator (resolved/total_per_repo)")
     
     # Print detailed repo information
     if 'all_repo_names' in aggregated_stats:

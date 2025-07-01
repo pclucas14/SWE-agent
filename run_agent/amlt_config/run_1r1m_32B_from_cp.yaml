@@ -43,7 +43,6 @@ jobs:
   - | 
     llamafactory-cli train run_agent/llama_factory_config/run_1r1m_32B_cp.yaml \
       $$CP_ARGS \
-      max_steps=1 \
       output_dir=$$AMLT_OUTPUT_DIR/cp_ckpt
   - |
     llamafactory-cli train run_agent/llama_factory_config/run_1r1m_32B.yaml \
