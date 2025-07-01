@@ -41,7 +41,7 @@ jobs:
     tune download Qwen/Qwen2.5-Coder-32B-Instruct \
       --output-dir llm-weights/Qwen/Qwen2.5-Coder-32B-Instruct \
       --ignore-patterns "original/consolidated.00.pth"
-  - python -c "from datasets import load_dataset; ds=load_dataset('SWE-bench/SWE-smith-trajectories', split='train'); ds.to_json('datasets/ft_xml_all_250331.jsonl')"
+  - python -c "from datasets import load_dataset; ds=load_dataset('SWE-bench/SWE-smith-trajectories', split='train'); ds.to_json('datasets/ft_xml_all.jsonl')"
 
   - |
     tune run --nnodes 1 --nproc_per_node 8 full_finetune_distributed \

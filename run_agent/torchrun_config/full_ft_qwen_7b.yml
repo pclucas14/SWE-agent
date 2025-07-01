@@ -70,7 +70,7 @@ log_every_n_steps: 1
 log_peak_memory_stats: True
 
 # Environment
-device: hip
+device: cuda
 dtype: bf16
 enable_activation_checkpointing: True  # True reduces memory
 enable_activation_offloading: False  # True reduces memory

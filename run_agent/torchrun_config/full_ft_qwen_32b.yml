@@ -58,7 +58,7 @@ resume_from_checkpoint: False
 dataset:
   _component_: torchtune.datasets.chat_dataset
   source: json
-  data_files: datasets/trajectories_sft/ft_xml_all_250413.jsonl
+  data_files: datasets/ft_xml_all.jsonl
   split: train
   conversation_column: messages
   conversation_style: openai
