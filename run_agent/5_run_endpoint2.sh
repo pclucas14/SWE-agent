@@ -4,6 +4,7 @@ docker run --runtime=nvidia --gpus=all \
     -p 8001:8000 \
     --env "CUDA_VISIBLE_DEVICES=2,3" \
     --ipc=host \
+    --restart unless-stopped \
     vllm/vllm-openai:latest \
     --model /model \
     --served-model-name o3_SWE-bench--SWE-agent-LM-32B_cl32768_lr1e-5_ep2_astropy__astropy.26d14786 \
