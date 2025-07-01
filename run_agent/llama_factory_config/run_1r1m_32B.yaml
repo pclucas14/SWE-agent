@@ -19,7 +19,8 @@ preprocessing_num_workers: 16
 
 ### output
 logging_steps: 10
-save_strategy: epoch
+save_steps: 999999  # Set higher than max_steps  
+save_strategy: "steps"
 plot_loss: true
 overwrite_output_dir: true
 save_only_model: true       # Save only the model weights
