@@ -1,30 +1,88 @@
-INSTANCE_IDS="astropy__astropy-12907|astropy__astropy-13033|astropy__astropy-13236|astropy__astropy-13398|astropy__astropy-13453|astropy__astropy-13579|astropy__astropy-13977|astropy__astropy-14096|astropy__astropy-14182|astropy__astropy-14309|astropy__astropy-14365|astropy__astropy-14369|astropy__astropy-14508|astropy__astropy-14539|astropy__astropy-14598|astropy__astropy-14995|astropy__astropy-7166|astropy__astropy-7336|astropy__astropy-7606|astropy__astropy-7671|astropy__astropy-8707|astropy__astropy-8872"
+#!/usr/bin/env bash
 
-# Terminal
-export OPENAI_API_BASE=http://127.0.0.1:8000/v1    # your local server
-export OPENAI_API_KEY=LOCAL                    # dummy key if the server ignores it
 
-sweagent run-batch \
-  --num_workers 16 \
-  --config agent/1r1m.yaml \
-  --agent.type max_step \
-  --agent.model.name "openai/SWE-bench/SWE-agent-LM-32B" \
-  --agent.model.api_base "$OPENAI_API_BASE" \
-  --agent.model.api_key  "$OPENAI_API_KEY" \
-  --agent.model.per_instance_cost_limit 0 \
-  --agent.model.total_cost_limit 0 \
-  --agent.model.max_input_tokens 24576 \
-  --agent.max_steps 50 \
-  --instances.shuffle True \
-  --instances.type swe_bench \
-  --instances.subset verified \
-  --instances.split test \
-  --instances.filter "$INSTANCE_IDS" \
-  --redo_existing True
+# This script runs the SWE-bench agent using a specified local host model and evaluates its performance.
+# Here we use the specific template that follows XML format, where XML parsing is needed.
+set -euo pipefail
 
-predictions_path="trajectories/zhengyanshi@microsoft.com/1r1m__openai--SWE-bench--SWE-agent-LM-32B__t-0.00__p-1.00__c-0.00___swe_bench_verified_test/preds.json"
-python -m swebench.harness.run_evaluation \
-    --dataset_name SWE-bench/SWE-bench_Verified \
-    --predictions_path $predictions_path \
-    --max_workers 24 \
-    --run_id swebench_verified
+# --- user-controlled settings -------------------------------------------------
+MODEL_NAME="openai/SWE-bench/SWE-agent-LM-32B"     # <-- only change here
+USER_RUN_ROOT="trajectories/zhengyanshi@microsoft.com"
+OPENAI_API_BASE=http://127.0.0.1:8000/v1
+OPENAI_API_KEY=LOCAL
+MAX_STEPS=75
+MAX_INPUT_TOKENS=24576
+MAX_WORKERS=32
+NUM_ITERATIONS=1
+# ------------------------------------------------------------------------------
+
+# Compute slug used inside run directory names, e.g. openai--SWE-bench--SWE-agent-LM-32B
+MODEL_SLUG=$(echo "$MODEL_NAME" | sed 's|/|--|g')
+
+# 1. Run the agent batch 3 times
+for i in $(seq 1 $NUM_ITERATIONS); do
+  echo "Running agent batch iteration $i/$NUM_ITERATIONS..."
+  sweagent run-batch \
+    --random_delay_multiplier=1 \
+    --num_workers ${MAX_WORKERS} \
+    --config agent/swesmith_infer.yaml \
+    --suffix ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}_swesmith_infer \
+    --agent.type max_step \
+    --agent.model.name "$MODEL_NAME" \
+    --agent.model.api_base "$OPENAI_API_BASE" \
+    --agent.model.api_key  "$OPENAI_API_KEY" \
+    --agent.model.per_instance_cost_limit 0 \
+    --agent.model.total_cost_limit 0 \
+    --instances.shuffle True \
+    --instances.type swe_bench \
+    --instances.subset verified \
+    --instances.split test
+  
+  echo "Completed agent batch iteration $i/$NUM_ITERATIONS"
+done
+
+# 2. Run evaluations for all completed runs
+for i in $(seq 1 $NUM_ITERATIONS); do
+  echo "Running evaluation for iteration $i/$NUM_ITERATIONS..."
+
+  echo "Looking for run directories with pattern: ${USER_RUN_ROOT}/1r1m__${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}_swesmith_infer*"
+
+  # Locate the run directory that matches this model and suffix
+  RUN_DIR=$(ls -td ${USER_RUN_ROOT}/1r1m__${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}_swesmith_infer* 2>/dev/null | head -n1)
+
+  if [[ -z "$RUN_DIR" ]]; then
+    echo "Error: no run directory found for model '$MODEL_NAME' iteration $i." >&2
+    exit 1
+  fi
+
+  echo "Found run directory: $RUN_DIR"
+
+  PREDICTIONS_PATH="${RUN_DIR}/preds.json"
+
+  if [[ ! -f "$PREDICTIONS_PATH" ]]; then
+    echo "Error: predictions file not found at '$PREDICTIONS_PATH'." >&2
+    echo "Contents of run directory:"
+    ls -la "$RUN_DIR"
+    exit 1
+  fi
+
+  echo "Using predictions from: $PREDICTIONS_PATH"
+  echo "File size: $(du -h "$PREDICTIONS_PATH")"
+
+  # 3. Evaluate
+  echo "Starting evaluation..."
+  if ! python -m swebench.harness.run_evaluation \
+      --dataset_name SWE-bench/SWE-bench_Verified \
+      --predictions_path "$PREDICTIONS_PATH" \
+      --max_workers 24 \
+      --run_id swebench_verified_run${i}; then
+    echo "Error: Evaluation failed for iteration $i" >&2
+    exit 1
+  fi
+  
+  echo "Completed evaluation for iteration $i/$NUM_ITERATIONS"
+done
+
+python run_script/analyze_results.py \
+    --results_path . \
+    --model_name "$MODEL_SLUG"
