@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # --- user-controlled settings -------------------------------------------------
-MODEL_NAME="openai/SWE-bench/SWE-agent-LM-32B"     # <-- only change here
+MODEL_NAME="openai/SWE-smith-32B-Agent_qwen32B_bs1x8_lr5e-5_ep3"     # <-- only change here
 USER_RUN_ROOT="trajectories/zhengyanshi@microsoft.com"
 OPENAI_API_BASE=http://127.0.0.1:8000/v1
 OPENAI_API_KEY=LOCAL
@@ -14,6 +14,7 @@ MAX_STEPS=75
 MAX_INPUT_TOKENS=24576
 MAX_WORKERS=32
 NUM_ITERATIONS=1
+CONFIG_FILE="swesmith_infer"
 # ------------------------------------------------------------------------------
 
 # Compute slug used inside run directory names, e.g. openai--SWE-bench--SWE-agent-LM-32B
@@ -25,8 +26,8 @@ for i in $(seq 1 $NUM_ITERATIONS); do
   sweagent run-batch \
     --random_delay_multiplier=1 \
     --num_workers ${MAX_WORKERS} \
-    --config agent/swesmith_infer.yaml \
-    --suffix ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}_swesmith_infer \
+    --config agent/${CONFIG_FILE}.yaml \
+    --suffix ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i} \
     --agent.type max_step \
     --agent.model.name "$MODEL_NAME" \
     --agent.model.api_base "$OPENAI_API_BASE" \
@@ -45,10 +46,10 @@ done
 for i in $(seq 1 $NUM_ITERATIONS); do
   echo "Running evaluation for iteration $i/$NUM_ITERATIONS..."
 
-  echo "Looking for run directories with pattern: ${USER_RUN_ROOT}/1r1m__${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}_swesmith_infer*"
+  echo "Looking for run directories with pattern: ${USER_RUN_ROOT}/${CONFIG_FILE}_${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}*"
 
   # Locate the run directory that matches this model and suffix
-  RUN_DIR=$(ls -td ${USER_RUN_ROOT}/1r1m__${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}_swesmith_infer* 2>/dev/null | head -n1)
+  RUN_DIR=$(ls -td ${USER_RUN_ROOT}/${CONFIG_FILE}_${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}* 2>/dev/null | head -n1)
 
   if [[ -z "$RUN_DIR" ]]; then
     echo "Error: no run directory found for model '$MODEL_NAME' iteration $i." >&2
