@@ -8,6 +8,9 @@ environment:
     WANDB_DISABLED: "true" # disable wandb
     WANDB_MODE: disabled
     HF_HUB_READ_TIMEOUT: 100
+    NCCL_TIMEOUT: 1800
+    NCCL_BLOCKING_WAIT: "1"
+    TORCH_NCCL_ASYNC_ERROR_HANDLING: "1"
   setup:
     - sudo apt update && sudo apt install -y git python3-apt
 
