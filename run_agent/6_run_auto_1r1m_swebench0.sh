@@ -8,14 +8,14 @@ set -euo pipefail
 # --- user-controlled settings -------------------------------------------------
 INSTANCE_IDS="astropy__astropy-12907|astropy__astropy-13033|astropy__astropy-13236|astropy__astropy-13398|astropy__astropy-13453|astropy__astropy-13579|astropy__astropy-13977|astropy__astropy-14096|astropy__astropy-14182|astropy__astropy-14309|astropy__astropy-14365|astropy__astropy-14369|astropy__astropy-14508|astropy__astropy-14539|astropy__astropy-14598|astropy__astropy-14995|astropy__astropy-7166|astropy__astropy-7336|astropy__astropy-7606|astropy__astropy-7671|astropy__astropy-8707|astropy__astropy-8872"
 
-MODEL_NAME="openai/o3_SWE-bench--SWE-agent-LM-32B_cl32768_lr1e-5_ep5_astropy__astropy.26d14786"     # <-- only change here
+MODEL_NAME="openai/Qwen/Qwen2.5-Coder-32B-instruct"     # <-- only change here
 USER_RUN_ROOT="trajectories/zhengyanshi@microsoft.com"
 OPENAI_API_BASE=http://127.0.0.1:8000/v1
 OPENAI_API_KEY=LOCAL
 MAX_STEPS=75
 MAX_INPUT_TOKENS=24576
 MAX_WORKERS=32
-NUM_ITERATIONS=1
+NUM_ITERATIONS=3
 # ------------------------------------------------------------------------------
 
 # Compute slug used inside run directory names, e.g. openai--SWE-bench--SWE-agent-LM-32B
@@ -25,6 +25,7 @@ MODEL_SLUG=$(echo "$MODEL_NAME" | sed 's|/|--|g')
 for i in $(seq 1 $NUM_ITERATIONS); do
   echo "Running agent batch iteration $i/$NUM_ITERATIONS..."
   sweagent run-batch \
+    --random_delay_multiplier=1 \
     --num_workers ${MAX_WORKERS} \
     --config agent/1r1m.yaml \
     --suffix ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i} \
