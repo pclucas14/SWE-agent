@@ -13,7 +13,7 @@ OPENAI_API_KEY=LOCAL
 MAX_STEPS=75
 MAX_INPUT_TOKENS=None
 MAX_WORKERS=32
-NUM_ITERATIONS=1
+NUM_ITERATIONS=2
 CONFIG_FILE="swesmith_infer"
 # ------------------------------------------------------------------------------
 
@@ -46,10 +46,10 @@ done
 for i in $(seq 1 $NUM_ITERATIONS); do
   echo "Running evaluation for iteration $i/$NUM_ITERATIONS..."
 
-  echo "Looking for run directories with pattern: ${USER_RUN_ROOT}/${CONFIG_FILE}_${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}*"
+  echo "Looking for run directories with pattern: ${USER_RUN_ROOT}/${CONFIG_FILE}__${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}*"
 
   # Locate the run directory that matches this model and suffix
-  RUN_DIR=$(ls -td ${USER_RUN_ROOT}/${CONFIG_FILE}_${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}* 2>/dev/null | head -n1)
+  RUN_DIR=$(ls -td ${USER_RUN_ROOT}/${CONFIG_FILE}__${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}* 2>/dev/null | head -n1)
 
   if [[ -z "$RUN_DIR" ]]; then
     echo "Error: no run directory found for model '$MODEL_NAME' iteration $i." >&2

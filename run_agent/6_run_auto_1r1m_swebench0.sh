@@ -8,7 +8,7 @@ set -euo pipefail
 # --- user-controlled settings -------------------------------------------------
 INSTANCE_IDS="astropy__astropy-12907|astropy__astropy-13033|astropy__astropy-13236|astropy__astropy-13398|astropy__astropy-13453|astropy__astropy-13579|astropy__astropy-13977|astropy__astropy-14096|astropy__astropy-14182|astropy__astropy-14309|astropy__astropy-14365|astropy__astropy-14369|astropy__astropy-14508|astropy__astropy-14539|astropy__astropy-14598|astropy__astropy-14995|astropy__astropy-7166|astropy__astropy-7336|astropy__astropy-7606|astropy__astropy-7671|astropy__astropy-8707|astropy__astropy-8872"
 
-MODEL_NAME="openai/Qwen/Qwen2.5-Coder-32B-instruct"     # <-- only change here
+MODEL_NAME="openai/R2E-Gym/R2EGym-32B-Agent"     # <-- only change here
 USER_RUN_ROOT="trajectories/zhengyanshi@microsoft.com"
 OPENAI_API_BASE=http://127.0.0.1:8000/v1
 OPENAI_API_KEY=LOCAL
@@ -16,6 +16,7 @@ MAX_STEPS=75
 MAX_INPUT_TOKENS=24576
 MAX_WORKERS=32
 NUM_ITERATIONS=3
+CONFIG_FILE="swesmith_infer"
 # ------------------------------------------------------------------------------
 
 # Compute slug used inside run directory names, e.g. openai--SWE-bench--SWE-agent-LM-32B
@@ -27,7 +28,7 @@ for i in $(seq 1 $NUM_ITERATIONS); do
   sweagent run-batch \
     --random_delay_multiplier=1 \
     --num_workers ${MAX_WORKERS} \
-    --config agent/1r1m.yaml \
+    --config agent/${CONFIG_FILE}.yaml \
     --suffix ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i} \
     --agent.type max_step \
     --agent.model.name "$MODEL_NAME" \
@@ -49,10 +50,10 @@ done
 for i in $(seq 1 $NUM_ITERATIONS); do
   echo "Running evaluation for iteration $i/$NUM_ITERATIONS..."
 
-  echo "Looking for run directories with pattern: ${USER_RUN_ROOT}/1r1m__${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}*"
+  echo "Looking for run directories with pattern: ${USER_RUN_ROOT}/${CONFIG_FILE}__${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}*"
 
   # Locate the run directory that matches this model and suffix
-  RUN_DIR=$(ls -td ${USER_RUN_ROOT}/1r1m__${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}* 2>/dev/null | head -n1)
+  RUN_DIR=$(ls -td ${USER_RUN_ROOT}/${CONFIG_FILE}__${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}* 2>/dev/null | head -n1)
 
   if [[ -z "$RUN_DIR" ]]; then
     echo "Error: no run directory found for model '$MODEL_NAME' iteration $i." >&2
