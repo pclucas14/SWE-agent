@@ -6,12 +6,12 @@
 set -euo pipefail
 
 # --- user-controlled settings -------------------------------------------------
-MODEL_NAME="openai/SWE-smith-32B-Agent_qwen32B_bs1x8_lr5e-5_ep3"     # <-- only change here
+MODEL_NAME="openai/R2E-Gym/R2EGym-32B-Agent"     # <-- only change here
 USER_RUN_ROOT="trajectories/zhengyanshi@microsoft.com"
 OPENAI_API_BASE=http://127.0.0.1:8000/v1
 OPENAI_API_KEY=LOCAL
 MAX_STEPS=75
-MAX_INPUT_TOKENS=24576
+MAX_INPUT_TOKENS=None
 MAX_WORKERS=32
 NUM_ITERATIONS=1
 CONFIG_FILE="swesmith_infer"
