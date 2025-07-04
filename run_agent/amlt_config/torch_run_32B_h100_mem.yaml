@@ -1,0 +1,65 @@
+description: Train Qwen 32B Model using torch tune on SWE-bench dataset
+
+env_defaults:
+  NODES: 2
+  GPUS: 8
+
+target:
+  name: msrresrchbasicvc
+  workspace_name: msrmtl-ws
+
+environment:
+  image: acpt-torch2.7.0-py3.10-cuda12.6-ubuntu22.04:20250609T145333123
+  registry: msrmtlacr.azurecr.io
+  env:
+    WANDB_API_KEY: $WANDB_API_KEY
+    WANDB_BASE_URL: $WANDB_BASE_URL
+    WANDB_DISABLED: "true" # disable wandb
+    WANDB_MODE: disabled
+    HF_HUB_READ_TIMEOUT: 100
+    CUDA_LAUNCH_BLOCKING: 1
+    TORCH_DISTRIBUTED_DEBUG: DETAIL
+  setup:
+    - sudo apt update && sudo apt install -y git python3-apt
+
+code:
+  local_dir: $CONFIG_DIR/../..
+
+jobs:
+- name: reproduce_swe_32B_h100_mem
+  submit_args:
+    env:
+      _AZUREML_SINGULARITY_JOB_UAI: $AZUREML_SINGULARITY_JOB_UAI
+  sku: ${NODES}xG${GPUS}-H100
+  process_count_per_node: 1
+  command:
+  - cat /opt/rocm/.info/version
+  - rocm-smi
+  - rocm-smi --showdriverversion
+  - echo $$PATH
+  - echo $$LD_LIBRARY_PATH
+  - echo $$AMLT_OUTPUT_DIR
+  - env
+
+  - export PATH="$$HOME/.local/bin:$$PATH"
+  - python -m pip install --upgrade pip
+  - python -m pip install ipython ipdb
+  - pip install wandb
+  - pip install torchao
+  - pip install torchtune
+
+  - |
+    tune download Qwen/Qwen2.5-Coder-32B-Instruct \
+      --output-dir llm-weights/Qwen/Qwen2.5-Coder-32B-Instruct \
+      --ignore-patterns "original/consolidated.00.pth"
+  - python -c "from datasets import load_dataset; ds=load_dataset('SWE-bench/SWE-smith-trajectories', split='train'); ds.to_json('datasets/ft_xml_all.jsonl')"
+
+  - mkdir -p ckpt
+  - |
+    tune run --nnodes $NODES --nproc_per_node ${GPUS} \
+      --rdzv_backend c10d \
+      --rdzv_id $(date +%s) \ 
+      --rdzv_endpoint $$MASTER_ADDR:$$MASTER_PORT \
+      full_finetune_distributed \
+      --config run_agent/torchrun_config/full_ft_qwen_32b_mem.yml \
+      output_dir=./ckpt && cp -r ckpt/* $$AMLT_OUTPUT_DIR
