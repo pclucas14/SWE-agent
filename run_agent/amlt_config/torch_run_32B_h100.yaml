@@ -3,6 +3,7 @@ description: Train Qwen 32B Model using torch tune on SWE-bench dataset
 env_defaults:
   NODES: 2
   GPUS: 8
+  MEM: 32
 
 target:
   name: msrresrchbasicvc
@@ -19,6 +20,7 @@ environment:
     HF_HUB_READ_TIMEOUT: 100
     CUDA_LAUNCH_BLOCKING: 1
     TORCH_DISTRIBUTED_DEBUG: DETAIL
+    NCCL_DEBUG: INFO
   setup:
     - sudo apt update && sudo apt install -y git python3-apt
 
@@ -48,6 +50,8 @@ jobs:
   - pip install torchao
   - pip install torchtune
 
+  - ulimit -l
+  - df -h /dev/shm 
   - |
     tune download Qwen/Qwen2.5-Coder-32B-Instruct \
       --output-dir llm-weights/Qwen/Qwen2.5-Coder-32B-Instruct \
@@ -55,8 +59,13 @@ jobs:
   - python -c "from datasets import load_dataset; ds=load_dataset('SWE-bench/SWE-smith-trajectories', split='train'); ds.to_json('datasets/ft_xml_all.jsonl')"
 
   - mkdir -p ckpt
+  - echo $$MASTER_ADDR
+  - echo $$MASTER_PORT
+  - echo $$NODE_RANK
   - |
-    tune run --nnodes $NODES --nproc_per_node ${GPUS} \
+    tune run \
+      --nnodes $NODES \
+      --nproc_per_node ${GPUS} \
       --rdzv_backend c10d \
       --rdzv_endpoint $$MASTER_ADDR:$$MASTER_PORT \
       full_finetune_distributed \

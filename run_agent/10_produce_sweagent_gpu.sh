@@ -6,7 +6,8 @@ set -a  # automatically export all variables
 source .env
 set +a  # turn off automatic export
 
-amlt run run_agent/amlt_config/torch_run_32B.yaml \
+export VC_NAME="msrresrchbasicvc"
+amlt run run_agent/amlt_config/torch_run_32B_h100.yaml \
     -t $VC_NAME \
     -w $WORKSPACE_NAME \
-    -y -d "Reproduce using torch tune on SWE-bench dataset"
+    -y -d "Reproduce using torch tune on SWE-bench dataset with 2*8 H100 GPUs"

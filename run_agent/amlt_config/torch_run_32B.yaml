@@ -46,7 +46,9 @@ jobs:
       --ignore-patterns "original/consolidated.00.pth"
   - python -c "from datasets import load_dataset; ds=load_dataset('SWE-bench/SWE-smith-trajectories', split='train'); ds.to_json('datasets/ft_xml_all.jsonl')"
 
+  - mkdir -p ckpt
   - |
     tune run --nnodes 1 --nproc_per_node 8 full_finetune_distributed \
       --config run_agent/torchrun_config/full_ft_qwen_32b.yml \
-      output_dir=$$AMLT_OUTPUT_DIR
+      output_dir=./ckpt && cp -r ckpt/* $$AMLT_OUTPUT_DIR
+    
