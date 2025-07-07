@@ -53,6 +53,7 @@ checkpointer:
   model_type: QWEN2
   safe_serialization: True
 resume_from_checkpoint: False
+keep_last_n_checkpoints: 1
 
 # Dataset and Sampler
 dataset:
