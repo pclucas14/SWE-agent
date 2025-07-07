@@ -934,7 +934,7 @@ class AzureLLMModel(LiteLLMModel):
         # Build Azure request arguments                                   #
         azure_kwargs: dict[str, Any] = dict(
             model=self._deployment_name,
-            messages=messages,
+            messages=messages_no_cache_control,
             n=n or 1,
         )
         
@@ -958,7 +958,7 @@ class AzureLLMModel(LiteLLMModel):
             raise
         except openai.OpenAIError:
             raise
-    
+
         # Convert response → SWE-agent format                             #
         outputs: list[dict] = []
         for choice in response.choices:  # type: ignore[attr-defined]

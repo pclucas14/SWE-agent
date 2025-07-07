@@ -130,23 +130,19 @@ def extract_agent_config(trajectories_folder):
     return os.path.basename(trajectories_folder.rstrip('/'))
 
 
-def process_trajectories(eval_file_path, trajectories_folder, folder_path, repo_name):
+def process_trajectories(eval_file_path, trajectories_folder):
     """
     Main function to process evaluation results and extract trajectory histories.
     
     Args:
         eval_file_path (str): Path to evaluation results JSON file
         trajectories_folder (str): Path to trajectories folder
-        folder_path (str): Folder path for output
-        repo_name (str): Repository name for output file
         
     Returns:
         Dataset: HuggingFace dataset with trajectory data
     """
     print(f"Processing evaluation results from: {eval_file_path}")
     print(f"Processing trajectories from: {trajectories_folder}")
-    print(f"Output folder: {folder_path}")
-    print(f"Repository name: {repo_name}")
     print("-" * 80)
     
     # Extract agent config from trajectories folder path
@@ -241,7 +237,7 @@ Example:
         sys.exit(1)
     
     # Process trajectories
-    dataset = process_trajectories(args.eval_file, args.trajectories_folder, args.folder_path, args.repo_name)
+    dataset = process_trajectories(args.eval_file, args.trajectories_folder)
     
     if dataset is None:
         print("No dataset created due to errors or no data")

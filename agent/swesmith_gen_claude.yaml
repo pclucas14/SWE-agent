@@ -6,6 +6,12 @@ agent:
   templates:
     system_template: |-
       You are a helpful assistant that can interact with a computer to solve tasks.
+
+      <IMPORTANT>
+      - Always provide reasoning for your function call in natural language BEFORE the function call (not after). 
+      - Your thoughts should be detailed and thorough, explaining why you are taking the action.
+      - Only call one function at a time
+      </IMPORTANT>
     instance_template: |-
       <uploaded_files>
       {{working_dir}}
