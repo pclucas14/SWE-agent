@@ -7,7 +7,7 @@ source .env
 set +a  # turn off automatic export
 
 DATA_FOLDER="data/automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10"
-DATASETS=("pylint-dev__pylint.1f8c4d9e.json" "astropy__astropy.26d14786.json")
+DATASETS=("pylint-dev__pylint.1f8c4d9e" "astropy__astropy.26d14786")
 # MODEL="Qwen/Qwen2.5-Coder-32B-instruct"
 MODEL="SWE-bench/SWE-agent-LM-32B"
 MODEL_SLUG=$(echo "$MODEL" | sed 's|.*/||')
@@ -18,12 +18,12 @@ CONTEXT_LENGTH=32768
 for EPOCH in "${EPOCHS[@]}"; do
     for DATASET in "${DATASETS[@]}"; do
         for LEARNING_RATE in "${LEARNING_RATES[@]}"; do
-            JOB_NAME=":tt_${MODEL_SLUG}_cl${CONTEXT_LENGTH}_lr${LEARNING_RATE}_ep${EPOCH}_${DATASET}"
+            JOB_NAME="tt_${MODEL_SLUG}_cl${CONTEXT_LENGTH}_lr${LEARNING_RATE}_ep${EPOCH}_${DATASET}"
 
             amlt run run_agent/amlt_config/torch_run_32B.yaml :torch_run_32B_1r1m=$JOB_NAME \
                 -t $VC_NAME \
                 -w $WORKSPACE_NAME \
-                -x "dataset.data_files=$DATA_FOLDER/$DATASET epochs=$EPOCH optimizer.lr=$LEARNING_RATE tokenizer.max_seq_len=$CONTEXT_LENGTH exp_name=$JOB_NAME" \
+                -x "dataset.data_files=$DATA_FOLDER/$DATASET.json epochs=$EPOCH optimizer.lr=$LEARNING_RATE tokenizer.max_seq_len=$CONTEXT_LENGTH exp_name=$JOB_NAME" \
                 -y -d "Train Qwen 3 Coder 32B Model on Froggy dataset using torch tune"
         done
     done
