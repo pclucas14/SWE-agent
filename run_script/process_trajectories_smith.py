@@ -271,8 +271,8 @@ Example:
     output_path = output_dir / args.repo_name
     
     try:
-        dataset.save_to_disk(str(output_path))
-        print(f"\nDataset saved to: {output_path}")
+        # dataset.save_to_disk(str(output_path))
+        # print(f"\nDataset saved to: {output_path}")
 
         # Also save as JSON for inspection
         json_output = output_path.parent / (output_path.name + '.json')
