@@ -1,4 +1,4 @@
-description: Train Qwen 32B Model using torch tune
+description: Train SWE-agent-LM-32B Model using torch tune
 environment:
   image: rocm6.4_ubuntu24.04_py3.12_pytorch2.6.0_flashattn_transformers:latest
   registry: msrmtlacr.azurecr.io
@@ -18,7 +18,7 @@ code:
   local_dir: $CONFIG_DIR/../..
 
 jobs:
-- name: torch_run_32B_1r1m
+- name: torch_run_sweagent_32B_1r1m
   submit_args:
     env:
       _AZUREML_SINGULARITY_JOB_UAI: $AZUREML_SINGULARITY_JOB_UAI
@@ -41,13 +41,13 @@ jobs:
   - pip install torchtune
 
   - |
-    tune download Qwen/Qwen2.5-Coder-32B-Instruct \
-      --output-dir llm-weights/Qwen/Qwen2.5-Coder-32B-Instruct \
+    tune download SWE-bench/SWE-agent-LM-32B \
+      --output-dir llm-weights/SWE-bench/SWE-agent-LM-32B \
       --ignore-patterns "original/consolidated.00.pth"
   - python -c "from datasets import load_dataset; ds=load_dataset('SWE-bench/SWE-smith-trajectories', split='train'); ds.to_json('datasets/ft_xml_all.jsonl')"
 
   - mkdir -p ckpt
   - |
     tune run --nnodes 1 --nproc_per_node 8 full_finetune_distributed \
-      --config run_agent/torchrun_config/full_ft_qwen_32b.yml \
+      --config run_agent/torchrun_config/full_ft_sweagent_32b.yml \
       $EXTRA_ARGS output_dir=./ckpt && cp -r ./ckpt/* $$AMLT_OUTPUT_DIR

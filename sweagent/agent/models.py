@@ -37,6 +37,7 @@ from tenacity import (
     stop_after_attempt,
     wait_random_exponential,
 )
+from dotenv import load_dotenv
 
 from sweagent import REPO_ROOT
 from sweagent.exceptions import (
@@ -282,7 +283,7 @@ class CopilotClaudeModelConfig(GenericAPIModelConfig):
     )
     
     vscode_copilot_dir: str | None = Field(
-        default=None,
+        default="~/repo/vscode-copilot",
         description="Path to vscode-copilot directory. If not provided, will use VSCODE_COPILOT_DIR env var or ~/vscode-copilot"
     )
     
@@ -1084,8 +1085,9 @@ class CopilotClaudeModel(LiteLLMModel):
             # Get the vscode-copilot directory path
             vscode_copilot_dir = (
                 self.config.vscode_copilot_dir or 
-                os.environ.get("VSCODE_COPILOT_DIR", os.path.expanduser("~/vscode-copilot"))
+                os.environ.get("VSCODE_COPILOT_DIR", os.path.expanduser("~/repo/vscode-copilot"))
             )
+            vscode_copilot_dir = os.path.expanduser(vscode_copilot_dir)
             if not os.path.exists(vscode_copilot_dir):
                 raise ValueError(f"vscode-copilot directory not found at: {vscode_copilot_dir}. "
                                "Set VSCODE_COPILOT_DIR environment variable or vscode_copilot_dir config to the correct path.")
@@ -1122,26 +1124,23 @@ class CopilotClaudeModel(LiteLLMModel):
             # Get the vscode-copilot directory path
             vscode_copilot_dir = (
                 self.config.vscode_copilot_dir or 
-                os.environ.get("VSCODE_COPILOT_DIR", os.path.expanduser("~/vscode-copilot"))
+                os.environ.get("VSCODE_COPILOT_DIR", os.path.expanduser("~/repo/vscode-copilot"))
             )
             
-            # Try to load HMAC_SECRET from environment or .env file in vscode-copilot directory
+            env_file_path = os.path.expanduser(os.path.join(vscode_copilot_dir, ".env"))
+
+            # Try loading .env file if HMAC_SECRET not already set
+            if not os.environ.get("HMAC_SECRET") and os.path.exists(env_file_path):
+                try:
+                    load_dotenv(dotenv_path=env_file_path)
+                except Exception as e:
+                    self.logger.warning("Failed to load .env file: %s", e)
+
             hmac_secret = os.environ.get("HMAC_SECRET")
             if not hmac_secret:
-                env_file_path = os.path.join(vscode_copilot_dir, ".env")
-                if os.path.exists(env_file_path):
-                    try:
-                        with open(env_file_path, 'r') as f:
-                            for line in f:
-                                line = line.strip()
-                                if line.startswith("HMAC_SECRET="):
-                                    hmac_secret = line.split("=", 1)[1].strip('"\'')
-                                    break
-                    except Exception as e:
-                        self.logger.warning(f"Failed to read .env file at {env_file_path}: {e}")
-            
-            if not hmac_secret:
-                raise ValueError("HMAC_SECRET not found in environment variables or .env file in vscode-copilot directory")
+                raise ValueError(
+                    "HMAC_SECRET not found. Please set it in environment variables or in a .env file in the vscode-copilot directory."
+                )
             
             bearer_token = self.fetch_token()
             hmac_value = self.create_request_hmac(hmac_secret)
@@ -1312,5 +1311,7 @@ def get_model(args: ModelConfig, tools: ToolConfig) -> AbstractModel:
         return CopilotClaudeModel(args, tools)
     if isinstance(args, GenericAPIModelConfig) and args.name in AzureLLMModel.AZURE_SUPPORTED_MODELS:
         return AzureLLMModel(args, tools)
+    assert isinstance(args, GenericAPIModelConfig), f"Expected {GenericAPIModelConfig}, got {args}"
+    return LiteLLMModel(args, tools)
     assert isinstance(args, GenericAPIModelConfig), f"Expected {GenericAPIModelConfig}, got {args}"
     return LiteLLMModel(args, tools)
