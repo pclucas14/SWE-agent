@@ -10,8 +10,14 @@ TRAJ_FOLDER="trajectories/zhengyanshi@microsoft.com/default__o1__t-0.00__p-1.00_
 FOLDER_PATH="automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10"
 REPO_NAME="pylint-dev__pylint.1f8c4d9e"
 
+EVAL_RESULT_FILE="trajectories/zhengyanshi@microsoft.com/swesmith_gen_claude__gpt-4o__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps/results.json"
+TRAJ_FOLDER="trajectories/zhengyanshi@microsoft.com/swesmith_gen_claude__gpt-4o__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps"
+FOLDER_PATH="swesmith_gen_claude__gpt-4o__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps"
+REPO_NAME="astropy__astropy.26d14786"
+SWESMITH_TASK_NAME=automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10
+
 python run_script/process_trajectories_smith.py \
     --eval-file $EVAL_RESULT_FILE \
     --trajectories-folder $TRAJ_FOLDER \
-    --folder-path $FOLDER_PATH \
+    --folder-path $SWESMITH_TASK_NAME/$FOLDER_PATH \
     --repo-name $REPO_NAME
