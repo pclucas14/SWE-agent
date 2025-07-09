@@ -14,7 +14,7 @@ OPENAI_API_BASE=http://127.0.0.1:8000/v1
 OPENAI_API_KEY=LOCAL
 MAX_STEPS=75
 MAX_INPUT_TOKENS=None
-MAX_WORKERS=64
+MAX_WORKERS=80
 NUM_ITERATIONS=1
 CONFIG_FILE="swesmith_infer"
 # ------------------------------------------------------------------------------
