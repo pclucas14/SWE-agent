@@ -17,6 +17,10 @@ import sys
 from pathlib import Path
 from datasets import Dataset
 import yaml
+import matplotlib.pyplot as plt
+import numpy as np
+from datasets import load_dataset
+from transformers import AutoTokenizer
 
 
 XML_STR_REPLACES = ["old_str", "new_str", "file_text"]
@@ -182,6 +186,153 @@ def process_trajectories(eval_file_path, trajectories_folder):
         return None
 
 
+def count_tokens_with_template(dataset, model_name, output_dir, repo_name, max_length=32768):
+    output_plot = os.path.join(output_dir, f"{model_name.replace('/', '_')}_token_histogram.png")
+    
+    print(f"Loading tokenizer for model: {model_name}")
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    except Exception as e:
+        print(f"Error loading tokenizer: {e}")
+        return None
+    
+    print(f"Processing {len(dataset)} samples...")
+    
+    token_counts = []
+    failed_count = 0
+    valid_indices = []  # Track which samples are valid
+    
+    for i, example in enumerate(dataset):
+        try:
+            messages = example.get('messages', [])
+            tools = example.get('tools', [])
+            
+            # Apply chat template and tokenize in one step
+            model_input = tokenizer.apply_chat_template(
+                messages,
+                tools=tools,
+                tokenize=False,
+                add_generation_prompt=False
+            )
+            
+            # Tokenize and count - do this only once
+            tokens = tokenizer.encode(model_input)
+            token_count = len(tokens)
+            token_counts.append(token_count)
+            valid_indices.append(i)
+            
+            if (i + 1) % 100 == 0:
+                print(f"Processed {i + 1}/{len(dataset)} samples")
+                
+        except Exception as e:
+            failed_count += 1
+            print(f"Failed to process sample {i}: {e}")
+            continue
+    
+    if not token_counts:
+        print("No samples were successfully processed!")
+        return None
+    
+    # Create filtered datasets
+    valid_dataset = dataset.select(valid_indices)
+    
+    # Find indices of samples that don't exceed max_length
+    truncated_indices = [i for i, count in enumerate(token_counts) if count <= max_length]
+    truncated_dataset = valid_dataset.select(truncated_indices)
+    
+    # Save JSON files
+    full_json_path = os.path.join(output_dir, f"{repo_name}_full.json")
+    truncated_json_path = os.path.join(output_dir, f"{repo_name}_ml{max_length}.json")
+    
+    print(f"\nSaving datasets:")
+    print(f"Full dataset ({len(valid_dataset)} samples) -> {full_json_path}")
+    print(f"Truncated dataset ({len(truncated_dataset)} samples) -> {truncated_json_path}")
+    
+    valid_dataset.to_json(full_json_path)
+    truncated_dataset.to_json(truncated_json_path)
+    
+    # Statistical analysis
+    token_counts = np.array(token_counts)
+    min_length = np.min(token_counts)
+    max_length_actual = np.max(token_counts)
+    avg_length = np.mean(token_counts)
+    median_length = np.median(token_counts)
+    std_length = np.std(token_counts)
+    
+    # Count examples exceeding max_length
+    exceeding_count = np.sum(token_counts > max_length)
+    exceeding_percentage = (exceeding_count / len(token_counts)) * 100
+    
+    print("\n=== Token Count Statistics ===")
+    print(f"Total samples processed: {len(token_counts)}")
+    print(f"Failed samples: {failed_count}")
+    print(f"Minimum length: {min_length}")
+    print(f"Maximum length: {max_length_actual}")
+    print(f"Average length: {avg_length:.2f}")
+    print(f"Median length: {median_length:.2f}")
+    print(f"Standard deviation: {std_length:.2f}")
+    print(f"Examples exceeding max_length ({max_length}): {exceeding_count} ({exceeding_percentage:.1f}%)")
+    
+    # Percentile analysis
+    percentiles = [25, 50, 75, 90, 95, 99]
+    print("\n=== Percentiles ===")
+    for p in percentiles:
+        value = np.percentile(token_counts, p)
+        print(f"{p}th percentile: {value:.2f}")
+    
+    # Create histogram
+    plt.figure(figsize=(12, 8))
+    plt.hist(token_counts, bins=50, alpha=0.7, edgecolor='black')
+    plt.axvline(min_length, color='red', linestyle='--', label=f'Min: {min_length}')
+    plt.axvline(max_length_actual, color='red', linestyle='--', label=f'Max: {max_length_actual}')
+    plt.axvline(avg_length, color='green', linestyle='-', linewidth=2, label=f'Mean: {avg_length:.2f}')
+    plt.axvline(median_length, color='orange', linestyle='-', linewidth=2, label=f'Median: {median_length:.2f}')
+    plt.axvline(max_length, color='purple', linestyle=':', linewidth=2, label=f'Max Length Limit: {max_length}')
+    
+    plt.xlabel('Number of Tokens')
+    plt.ylabel('Frequency')
+    plt.title(f'Token Count Distribution After Chat Template\nModel: {model_name}')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # Add statistics text box
+    stats_text = f'Samples: {len(token_counts)}\nMean: {avg_length:.1f}\nStd: {std_length:.1f}\nMin: {min_length}\nMax: {max_length_actual}\nExceeding {max_length}: {exceeding_count} ({exceeding_percentage:.1f}%)'
+    plt.text(0.02, 0.98, stats_text, transform=plt.gca().transAxes, 
+             verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+    
+    plt.tight_layout()
+    plt.savefig(output_plot, dpi=300, bbox_inches='tight')
+    print(f"\nHistogram saved to: {output_plot}")
+    
+    # Save detailed statistics to JSON
+    stats_file = output_plot.replace('.png', '_stats.json')
+    detailed_stats = {
+        'total_samples': len(token_counts),
+        'failed_samples': failed_count,
+        'min_length': int(min_length),
+        'max_length': int(max_length_actual),
+        'avg_length': float(avg_length),
+        'median_length': float(median_length),
+        'std_length': float(std_length),
+        'max_length_limit': max_length,
+        'exceeding_max_length': int(exceeding_count),
+        'exceeding_percentage': float(exceeding_percentage),
+        'percentiles': {f'p{p}': float(np.percentile(token_counts, p)) for p in percentiles},
+        'model': model_name,
+        'dataset_size': len(dataset),
+        'valid_samples': len(valid_dataset),
+        'truncated_samples': len(truncated_dataset),
+        'full_dataset_path': full_json_path,
+        'truncated_dataset_path': truncated_json_path
+    }
+    
+    with open(stats_file, 'w') as f:
+        json.dump(detailed_stats, f, indent=2)
+    print(f"Detailed statistics saved to: {stats_file}")
+    
+    return detailed_stats
+
+
 def main():
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(
@@ -220,6 +371,10 @@ Example:
         help='Repository name for the output file'
     )
     
+    parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-0.5B-Instruct", help="Model name for tokenizer")
+    parser.add_argument("--output_plot", type=str, default=None, help="Output plot filename")
+    parser.add_argument("--count_tokens", type=bool, default=True, help="Whether to count tokens after applying chat template")
+    parser.add_argument("--max_length", type=int, default=32700, help="Maximum length of tokenized input (default: 32768)")
     args = parser.parse_args()
     
     # Auto-derive eval file path if not provided
@@ -259,9 +414,9 @@ Example:
         
         if sample['messages']:
             first_entry = sample['messages'][0]
-            if isinstance(first_entry, dict) and 'messages' in first_entry:
-                content_preview = str(first_entry['messages'])[:200]
-                print(f"First messages preview: {content_preview}...")
+            if isinstance(first_entry, dict) and 'content' in first_entry:
+                content_preview = str(first_entry['content'])[:200]
+                print(f"First message preview: {content_preview}...")
     
     # Save dataset
     # Create output directory structure: data/folder_path/repo_name
@@ -271,17 +426,35 @@ Example:
     output_path = output_dir / args.repo_name
     
     try:
-        # dataset.save_to_disk(str(output_path))
-        # print(f"\nDataset saved to: {output_path}")
-
-        # Also save as JSON for inspection
+        # Save as JSON for inspection (original dataset)
         json_output = output_path.parent / (output_path.name + '.json')
         dataset.to_json(str(json_output))
-        print(f"Dataset also saved as JSON: {json_output}")
+        print(f"Original dataset saved as JSON: {json_output}")
 
     except Exception as e:
         print(f"\nError saving dataset: {e}")
         sys.exit(1)
+    
+    # Add token counting functionality
+    if args.count_tokens:
+        print("\n=== Starting Token Count Analysis ===")
+        token_stats = count_tokens_with_template(
+            dataset=dataset,
+            model_name=args.model,
+            output_dir=output_dir,
+            repo_name=args.repo_name,
+            max_length=args.max_length
+        )
+        
+        if token_stats:
+            print(f"\nToken analysis completed successfully!")
+            print(f"Average tokens per sample: {token_stats['avg_length']:.2f}")
+            print(f"Max tokens: {token_stats['max_length']}")
+            print(f"Examples exceeding max_length: {token_stats['exceeding_max_length']} ({token_stats['exceeding_percentage']:.1f}%)")
+            print(f"Full dataset saved to: {token_stats['full_dataset_path']}")
+            print(f"Truncated dataset saved to: {token_stats['truncated_dataset_path']}")
+        else:
+            print("Token analysis failed!")
 
 
 if __name__ == "__main__":
