@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import hmac
 import json
 import os
 import random
 import re
 import shlex
+import subprocess
 import threading
 import time
+import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
 from threading import Lock
@@ -15,7 +19,7 @@ from typing import Annotated, Any, Literal
 
 import litellm
 import litellm.types.utils
-from openai import AzureOpenAI
+from openai import AzureOpenAI, OpenAI, NOT_GIVEN
 import openai  # ← NEW: for exception classes
 from azure.identity import (
     ChainedTokenCredential,
@@ -263,12 +267,40 @@ class HumanThoughtModelConfig(HumanModelConfig):
     model_config = ConfigDict(extra="forbid")
 
 
+class CopilotClaudeModelConfig(GenericAPIModelConfig):
+    """Configuration for GitHub Copilot Claude API model"""
+
+    name: Literal["claude-sonnet-4"] = Field(default="claude-sonnet-4", description="Model name.")
+    
+    api_base: str | None = Field(
+        default="https://api.enterprise.githubcopilot.com",
+        description="GitHub Copilot API base URL"
+    )
+    api_version: str | None = Field(
+        default="2025-05-01",
+        description="GitHub Copilot API version"
+    )
+    
+    vscode_copilot_dir: str | None = Field(
+        default=None,
+        description="Path to vscode-copilot directory. If not provided, will use VSCODE_COPILOT_DIR env var or ~/vscode-copilot"
+    )
+    
+    max_tokens: int = Field(
+        default=8192,
+        description="Maximum tokens for completion"
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
 ModelConfig = Annotated[
     GenericAPIModelConfig
     | ReplayModelConfig
     | InstantEmptySubmitModelConfig
     | HumanModelConfig
-    | HumanThoughtModelConfig,
+    | HumanThoughtModelConfig
+    | CopilotClaudeModelConfig,
     Field(union_mode="left_to_right"),
 ]
 
@@ -1013,11 +1045,245 @@ class AzureLLMModel(LiteLLMModel):
         return outputs if n > 1 else outputs[0]
 
 
+class CopilotClaudeModel(LiteLLMModel):
+    """
+    GitHub Copilot Claude API implementation.
+    Uses OpenAI client format but connects to GitHub Copilot Claude endpoints.
+    """
+
+    COPILOT_CLAUDE_SUPPORTED_MODELS = ["claude-sonnet-4"]
+
+    def __init__(self, args: CopilotClaudeModelConfig, tools: ToolConfig):
+        if args.name not in self.COPILOT_CLAUDE_SUPPORTED_MODELS:
+            msg = f"{args.name} not in supported Copilot Claude models {self.COPILOT_CLAUDE_SUPPORTED_MODELS}"
+            raise ValueError(msg)
+        super().__init__(args, tools)
+        
+        self.config: CopilotClaudeModelConfig = args
+        self._client = None
+        self._token_cache = None
+        self._token_expires_at = 0
+
+    def create_request_hmac(self, hmac_secret: str) -> str | None:
+        """Create HMAC for request authentication"""
+        if not hmac_secret:
+            return None
+        current = str(int(time.time()))
+        signature = hmac.new(
+            hmac_secret.encode("utf-8"), current.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        return f"{current}.{signature}"
+
+    def fetch_token(self) -> str:
+        """Fetch GitHub Copilot token using Node.js script"""
+        # Cache token for 30 minutes to avoid frequent fetches
+        if self._token_cache and time.time() < self._token_expires_at:
+            return self._token_cache
+
+        try:
+            # Get the vscode-copilot directory path
+            vscode_copilot_dir = (
+                self.config.vscode_copilot_dir or 
+                os.environ.get("VSCODE_COPILOT_DIR", os.path.expanduser("~/vscode-copilot"))
+            )
+            if not os.path.exists(vscode_copilot_dir):
+                raise ValueError(f"vscode-copilot directory not found at: {vscode_copilot_dir}. "
+                               "Set VSCODE_COPILOT_DIR environment variable or vscode_copilot_dir config to the correct path.")
+            
+            result = subprocess.run(
+                ["npx", "tsx", "src/util/node/fetch-token-standalone.js"],
+                capture_output=True,
+                text=True,
+                cwd=vscode_copilot_dir,  # Run from vscode-copilot directory
+            )
+            
+            if result.returncode != 0:
+                error_msg = f"Command failed with exit code {result.returncode}"
+                if result.stderr:
+                    error_msg += f"\nSTDERR: {result.stderr}"
+                if result.stdout:
+                    error_msg += f"\nSTDOUT: {result.stdout}"
+                raise ValueError(error_msg)
+            
+            token = result.stdout.strip()
+            if not token:
+                raise ValueError("fetch-token.js returned empty output")
+            
+            # Cache the token for 30 minutes
+            self._token_cache = token
+            self._token_expires_at = time.time() + 1800  # 30 minutes
+            return token
+        except Exception as e:
+            raise ValueError(f"Failed to get Copilot token: {e}")
+
+    @property
+    def client(self):
+        if self._client is None:
+            # Get the vscode-copilot directory path
+            vscode_copilot_dir = (
+                self.config.vscode_copilot_dir or 
+                os.environ.get("VSCODE_COPILOT_DIR", os.path.expanduser("~/vscode-copilot"))
+            )
+            
+            # Try to load HMAC_SECRET from environment or .env file in vscode-copilot directory
+            hmac_secret = os.environ.get("HMAC_SECRET")
+            if not hmac_secret:
+                env_file_path = os.path.join(vscode_copilot_dir, ".env")
+                if os.path.exists(env_file_path):
+                    try:
+                        with open(env_file_path, 'r') as f:
+                            for line in f:
+                                line = line.strip()
+                                if line.startswith("HMAC_SECRET="):
+                                    hmac_secret = line.split("=", 1)[1].strip('"\'')
+                                    break
+                    except Exception as e:
+                        self.logger.warning(f"Failed to read .env file at {env_file_path}: {e}")
+            
+            if not hmac_secret:
+                raise ValueError("HMAC_SECRET not found in environment variables or .env file in vscode-copilot directory")
+            
+            bearer_token = self.fetch_token()
+            hmac_value = self.create_request_hmac(hmac_secret)
+            
+            if not hmac_value or not bearer_token:
+                raise ValueError("Missing HMAC or Bearer token for GitHub Copilot Claude API")
+
+            # Create OpenAI client with GitHub Copilot endpoint and custom headers
+            self._client = OpenAI(
+                api_key=bearer_token,
+                base_url=self.config.api_base or "https://api.enterprise.githubcopilot.com",
+                default_headers={
+                    "X-Interaction-Type": "conversation-agent",
+                    "OpenAI-Intent": "conversation-agent",
+                    "X-GitHub-Api-Version": self.config.api_version or "2025-05-01",
+                    "Copilot-Integration-Id": "vscode-chat-dev",
+                    "VScode-SessionId": "sweagent-session",
+                    "VScode-MachineId": "sweagent-machine",
+                    "X-Interaction-Id": str(uuid.uuid4()),
+                    "X-Initiator": "agent",
+                    "Editor-Version": "sweagent/1.0",
+                    "Editor-Plugin-Version": "sweagent/1.0",
+                    "Request-Hmac": hmac_value,
+                },
+                timeout=None,
+            )
+        return self._client
+
+    def _single_query(
+        self,
+        messages: list[dict[str, str]],
+        n: int | None = None,
+        temperature: float | None = None,
+    ) -> list[dict]:
+        self._sleep()
+
+        messages_no_cache_control = copy.deepcopy(messages)
+        for m in messages_no_cache_control:
+            if "cache_control" in m:
+                del m["cache_control"]
+
+        input_tokens = litellm.utils.token_counter(
+            messages=messages_no_cache_control,
+            model=self.config.name,
+        )
+        if self.model_max_input_tokens is None:
+            msg = (
+                f"No max input tokens found for model {self.config.name!r}. "
+                "If you are using a local model, you can set `max_input_token` in the model config to override this."
+            )
+            self.logger.warning(msg)
+        elif input_tokens > self.model_max_input_tokens > 0:
+            msg = f"Input tokens {input_tokens} exceed max tokens {self.model_max_input_tokens}"
+            raise ContextWindowExceededError(msg)
+
+        # Build request arguments for GitHub Copilot Claude API
+        request_kwargs: dict[str, Any] = dict(
+            model=self.config.name,
+            messages=messages_no_cache_control,
+            max_tokens=self.config.max_tokens,
+            temperature=self.config.temperature if temperature is None else temperature,
+        )
+        
+        if self.config.top_p is not None:
+            request_kwargs["top_p"] = self.config.top_p
+        
+        if self.tools.use_function_calling:
+            request_kwargs["tools"] = self.tools.tools
+            request_kwargs["tool_choice"] = "auto"
+
+        # Call GitHub Copilot Claude API
+        try:
+            response = self.client.chat.completions.create(**request_kwargs)
+        except openai.BadRequestError as e:
+            if e.code == "context_length_exceeded" or "is longer than the model's context length" in str(e):
+                raise ContextWindowExceededError from e
+            raise
+        except openai.RateLimitError as e:
+            # Let this bubble up for retry handling
+            raise
+        except openai.OpenAIError:
+            raise
+
+        # Convert response to SWE-agent format
+        outputs: list[dict] = []
+        for choice in response.choices:
+            out: dict[str, Any] = {"message": choice.message.content or ""}
+            if self.tools.use_function_calling and getattr(choice.message, "tool_calls", None):
+                out["tool_calls"] = [tc.model_dump() for tc in choice.message.tool_calls]
+            outputs.append(out)
+
+        # Use server-reported token usage if available
+        if getattr(response, "usage", None) is not None and getattr(response.usage, "completion_tokens", None) is not None:
+            output_tokens = int(response.usage.completion_tokens or 0)
+        else:
+            # Fallback: approximate with litellm token counter
+            output_tokens = sum(
+                litellm.utils.token_counter(text=o["message"], model=self.config.name) for o in outputs
+            )
+
+        # NOTE: GitHub Copilot Claude API pricing may vary → record zero cost for now
+        self._update_stats(input_tokens=input_tokens, output_tokens=output_tokens, cost=0.0)
+        return outputs
+
+    def query(self, history: History, n: int = 1, temperature: float | None = None) -> list[dict] | dict:
+        messages = self._history_to_messages(history)
+
+        def retry_warning(retry_state: RetryCallState):
+            exception = retry_state.outcome.exception() if retry_state.outcome else None
+            if exception:
+                self.logger.warning(
+                    f"Retrying Copilot Claude query (attempt {retry_state.attempt_number}) due to {exception.__class__.__name__}: {exception}"
+                )
+
+        # Custom retry loop for Copilot Claude API-specific errors
+        for attempt in Retrying(
+            stop=stop_after_attempt(self.config.retry.retries),
+            wait=wait_random_exponential(
+                min=self.config.retry.min_wait, max=self.config.retry.max_wait
+            ),
+            reraise=True,
+            retry=retry_if_not_exception_type((
+                ContextWindowExceededError,
+                CostLimitExceededError,
+                ModelConfigurationError,
+                openai.AuthenticationError,
+                openai.BadRequestError,  # retry on RateLimitError, but NOT on these
+                KeyboardInterrupt,
+            )),
+            before_sleep=retry_warning,
+        ):
+            with attempt:
+                outputs = self._single_query(messages, n=n, temperature=temperature)
+
+        return outputs if n > 1 else outputs[0]
+
+
 def get_model(args: ModelConfig, tools: ToolConfig) -> AbstractModel:
     """Returns correct model object given arguments and commands"""
     # Convert GenericAPIModelConfig to specific model config if needed
     if isinstance(args, GenericAPIModelConfig) and not isinstance(
-        args, HumanModelConfig | HumanThoughtModelConfig | ReplayModelConfig | InstantEmptySubmitModelConfig
+        args, HumanModelConfig | HumanThoughtModelConfig | ReplayModelConfig | InstantEmptySubmitModelConfig | CopilotClaudeModelConfig
     ):
         if args.name == "human":
             args = HumanModelConfig(**args.model_dump())
@@ -1027,6 +1293,8 @@ def get_model(args: ModelConfig, tools: ToolConfig) -> AbstractModel:
             args = ReplayModelConfig(**args.model_dump())
         elif args.name == "instant_empty_submit":
             args = InstantEmptySubmitModelConfig(**args.model_dump())
+        elif args.name in CopilotClaudeModel.COPILOT_CLAUDE_SUPPORTED_MODELS:
+            args = CopilotClaudeModelConfig(**args.model_dump())
 
     if args.name == "human":
         assert isinstance(args, HumanModelConfig), f"Expected {HumanModelConfig}, got {args}"
@@ -1040,6 +1308,8 @@ def get_model(args: ModelConfig, tools: ToolConfig) -> AbstractModel:
     elif args.name == "instant_empty_submit":
         assert isinstance(args, InstantEmptySubmitModelConfig), f"Expected {InstantEmptySubmitModelConfig}, got {args}"
         return InstantEmptySubmitTestModel(args, tools)
+    if isinstance(args, CopilotClaudeModelConfig):
+        return CopilotClaudeModel(args, tools)
     if isinstance(args, GenericAPIModelConfig) and args.name in AzureLLMModel.AZURE_SUPPORTED_MODELS:
         return AzureLLMModel(args, tools)
     assert isinstance(args, GenericAPIModelConfig), f"Expected {GenericAPIModelConfig}, got {args}"
