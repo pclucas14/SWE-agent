@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from datasets import load_dataset
 from transformers import AutoTokenizer
+import re
 
 
 XML_STR_REPLACES = ["old_str", "new_str", "file_text"]
@@ -30,6 +31,25 @@ XML_STR_REPLACES = ["old_str", "new_str", "file_text"]
 SYSTEM_PROMPT = yaml.safe_load(open("agent/swesmith_infer.yaml", "r"))["agent"][
     "templates"
 ]["system_template"]
+
+
+def filter_code_blocks(text):
+    """
+    Remove text between triple backticks (```) from the input text.
+    
+    Args:
+        text (str): Input text that may contain code blocks
+        
+    Returns:
+        str: Text with code blocks removed
+    """
+    # Pattern to match content between triple backticks (including the backticks)
+    pattern = r'```.*?```'
+    # Remove the matched patterns (code blocks) from the text
+    filtered_text = re.sub(pattern, '', text, flags=re.DOTALL)
+    # Clean up any extra whitespace that might be left
+    filtered_text = re.sub(r'\n\s*\n\s*\n', '\n\n', filtered_text)
+    return filtered_text.strip()
 
 
 def transform_traj_xml(traj: dict) -> dict:
@@ -62,7 +82,9 @@ def transform_traj_xml(traj: dict) -> dict:
                 )
             else:
                 action = "\n".join(tool_call_to_action(message["tool_calls"]))
-                content = f"{message['thought']}\n\n{action}"
+                # Filter out code blocks from the thought content
+                filtered_thought = filter_code_blocks(message['thought'])
+                content = f"{filtered_thought}\n\n{action}"
         elif message["role"] == "system":
             content = SYSTEM_PROMPT
         else:
