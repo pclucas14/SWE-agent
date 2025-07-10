@@ -5,6 +5,7 @@ set -euo pipefail
 
 # --- user-controlled settings -------------------------------------------------
 MODEL_NAME="gpt-4o"                                  # <-- only change here
+MODEL_NAME="claude-sonnet-4"
 HOME_PATH="/home/zhengyanshi/project"
 USER_RUN_ROOT="trajectories/zhengyanshi@microsoft.com"
 REPO_NAME="pylint-dev__pylint.1f8c4d9e"
