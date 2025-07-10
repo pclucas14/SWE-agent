@@ -1226,11 +1226,20 @@ class CopilotClaudeModel(LiteLLMModel):
 
         # Convert response to SWE-agent format
         outputs: list[dict] = []
+        combined_message = ""
+        combined_tool_calls = []
+        
         for choice in response.choices:
-            out: dict[str, Any] = {"message": choice.message.content or ""}
+            if choice.message.content:
+                combined_message += choice.message.content
             if self.tools.use_function_calling and getattr(choice.message, "tool_calls", None):
-                out["tool_calls"] = [tc.model_dump() for tc in choice.message.tool_calls]
-            outputs.append(out)
+                combined_tool_calls.extend([tc.model_dump() for tc in choice.message.tool_calls])
+        
+        # Create single output with combined message and tool calls
+        out: dict[str, Any] = {"message": combined_message}
+        if combined_tool_calls:
+            out["tool_calls"] = combined_tool_calls
+        outputs.append(out)
 
         # Use server-reported token usage if available
         if getattr(response, "usage", None) is not None and getattr(response.usage, "completion_tokens", None) is not None:
@@ -1275,6 +1284,7 @@ class CopilotClaudeModel(LiteLLMModel):
             with attempt:
                 outputs = self._single_query(messages, n=n, temperature=temperature)
 
+        # To update to merge message and tool calls into a single dict
         return outputs if n > 1 else outputs[0]
 
 
