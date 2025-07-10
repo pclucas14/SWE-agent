@@ -16,11 +16,11 @@ FOLDER_PATH="swesmith_gen_claude__gpt-4o__t-0.00__p-1.00__c-2.00___patch_swesmit
 REPO_NAME="astropy__astropy.26d14786"
 SWESMITH_TASK_NAME=automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10
 
-EVAL_RESULT_FILE="trajectories/zhengyanshi@microsoft.com/swesmith_gen_claude__gpt-4.1__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps/results.json"
-TRAJ_FOLDER="trajectories/zhengyanshi@microsoft.com/swesmith_gen_claude__gpt-4.1__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps"
-FOLDER_PATH="swesmith_gen_claude__gpt-4.1__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps"
-REPO_NAME="astropy__astropy.26d14786"
-SWESMITH_TASK_NAME=automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10
+# EVAL_RESULT_FILE="trajectories/zhengyanshi@microsoft.com/swesmith_gen_claude__gpt-4.1__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps/results.json"
+# TRAJ_FOLDER="trajectories/zhengyanshi@microsoft.com/swesmith_gen_claude__gpt-4.1__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps"
+# FOLDER_PATH="swesmith_gen_claude__gpt-4.1__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps"
+# REPO_NAME="astropy__astropy.26d14786"
+# SWESMITH_TASK_NAME=automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10
 
 python run_script/process_trajectories_smith.py \
     --eval-file $EVAL_RESULT_FILE \
