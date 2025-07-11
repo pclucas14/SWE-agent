@@ -49,5 +49,5 @@ jobs:
   - mkdir -p ckpt
   - |
     tune run --nnodes 1 --nproc_per_node 8 full_finetune_distributed \
-      --config run_agent/torchrun_config/full_ft_qwen_32b.yml \
+      --config run_agent/torchrun_config/full_ft_qwen_32b_reprod.yml \
       $EXTRA_ARGS output_dir=./ckpt && cp -r ./ckpt/* $$AMLT_OUTPUT_DIR

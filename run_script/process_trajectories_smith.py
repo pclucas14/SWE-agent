@@ -208,6 +208,22 @@ def process_trajectories(eval_file_path, trajectories_folder):
         return None
 
 
+def filter_submit_function(message):
+    """
+    Filter for messages containing submit function call pattern.
+    
+    Checks for:
+    <function=submit>
+    </function>
+    
+    Note: This filter is special - it only checks the last assistant message in each example.
+    """
+    content = message['content']
+    # Check for submit function pattern (with or without parameters)
+    submit_pattern = re.compile(r'<function=submit>.*?</function>', re.DOTALL)
+    return bool(submit_pattern.search(content))
+
+
 def count_tokens_with_template(dataset, model_name, output_dir, repo_name, max_length=32768):
     output_plot = os.path.join(output_dir, f"{model_name.replace('/', '_')}_token_histogram.png")
     
@@ -262,16 +278,36 @@ def count_tokens_with_template(dataset, model_name, output_dir, repo_name, max_l
     truncated_indices = [i for i, count in enumerate(token_counts) if count <= max_length]
     truncated_dataset = valid_dataset.select(truncated_indices)
     
+    # Filter for examples ending with submit function
+    submit_indices = []
+    for i in range(len(valid_dataset)):
+        messages = valid_dataset[i]['messages']
+        # Find the last assistant message
+        last_assistant_msg = None
+        for msg in reversed(messages):
+            if msg['role'] == 'assistant':
+                last_assistant_msg = msg
+                break
+        
+        # Check if it contains submit function
+        if last_assistant_msg and filter_submit_function(last_assistant_msg):
+            submit_indices.append(i)
+    
+    submit_dataset = valid_dataset.select(submit_indices)
+    
     # Save JSON files
     full_json_path = os.path.join(output_dir, f"{repo_name}_full.json")
     truncated_json_path = os.path.join(output_dir, f"{repo_name}_ml{max_length}.json")
+    submit_json_path = os.path.join(output_dir, f"{repo_name}_submit.json")
     
     print(f"\nSaving datasets:")
     print(f"Full dataset ({len(valid_dataset)} samples) -> {full_json_path}")
     print(f"Truncated dataset ({len(truncated_dataset)} samples) -> {truncated_json_path}")
+    print(f"Submit-filtered dataset ({len(submit_dataset)} samples) -> {submit_json_path}")
     
     valid_dataset.to_json(full_json_path)
     truncated_dataset.to_json(truncated_json_path)
+    submit_dataset.to_json(submit_json_path)
     
     # Statistical analysis
     token_counts = np.array(token_counts)
@@ -344,8 +380,10 @@ def count_tokens_with_template(dataset, model_name, output_dir, repo_name, max_l
         'dataset_size': len(dataset),
         'valid_samples': len(valid_dataset),
         'truncated_samples': len(truncated_dataset),
+        'submit_samples': len(submit_dataset),
         'full_dataset_path': full_json_path,
-        'truncated_dataset_path': truncated_json_path
+        'truncated_dataset_path': truncated_json_path,
+        'submit_dataset_path': submit_json_path
     }
     
     with open(stats_file, 'w') as f:
@@ -475,6 +513,7 @@ Example:
             print(f"Examples exceeding max_length: {token_stats['exceeding_max_length']} ({token_stats['exceeding_percentage']:.1f}%)")
             print(f"Full dataset saved to: {token_stats['full_dataset_path']}")
             print(f"Truncated dataset saved to: {token_stats['truncated_dataset_path']}")
+            print(f"Submit-filtered dataset saved to: {token_stats['submit_dataset_path']}")
         else:
             print("Token analysis failed!")
 
