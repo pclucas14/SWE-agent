@@ -8,13 +8,13 @@ MODEL_NAME="gpt-4o"
 MODEL_NAME="claude-sonnet-4"
 HOME_PATH="/home/zhengyanshi/project"
 USER_RUN_ROOT="trajectories/zhengyanshi@microsoft.com"
-REPO_NAME="pylint-dev__pylint.1f8c4d9e"
+# REPO_NAME="pylint-dev__pylint.1f8c4d9e"
 REPO_NAME="astropy__astropy.26d14786"
 CONFIG_FILE="swesmith_gen_claude"
 NUM_WORKERS=64
 MAX_STEPS=50
 COST_LIMIT=2.00
-NUM_ITERATIONS=1
+NUM_ITERATIONS=2
 SWESMITH_TASK_NAME=automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10
 # ------------------------------------------------------------------------------
 
@@ -27,7 +27,7 @@ TASK_DATA_PATH="$HOME_PATH/SWE-smith/logs/$SWESMITH_TASK_NAME/$REPO_NAME/task_in
 echo "Starting SWE-agent run with model: $MODEL_NAME"
 echo "Task data path: $TASK_DATA_PATH"
 
-for i in $(seq 1 $NUM_ITERATIONS); do
+for i in $(seq 2 $NUM_ITERATIONS); do
   echo "Running agent batch iteration $i/$NUM_ITERATIONS..."
   python sweagent/run/run_1r1m_batch.py \
       --config agent/${CONFIG_FILE}.yaml \

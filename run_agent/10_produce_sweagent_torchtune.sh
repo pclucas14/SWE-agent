@@ -5,7 +5,7 @@
 set -a  # automatically export all variables
 source .env
 set +a  # turn off automatic export
-
+export VC_NAME="quickdevvc"
 amlt run run_agent/amlt_config/torch_run_32B.yaml ":torch_run_32B_1r1m=reproduce_lr1e-4_tt"\
     -t $VC_NAME \
     -w $WORKSPACE_NAME \

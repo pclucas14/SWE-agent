@@ -20,10 +20,13 @@ TRAJ_MODEL="gpt-4o_gpt-4.1"
 DATASETS=("astropy__astropy.26d14786_ml32700" "astropy__astropy.26d14786_full")
 # DATASETS=("pylint-dev__pylint.1f8c4d9e_ml32700" "pylint-dev__pylint.1f8c4d9e_full")
 
+DATA_FOLDER=data/automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10/swesmith_gen_claude__claude-sonnet-4_gpt4.1_gpt-4o__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps
+TRAJ_MODEL="claude__claude-sonnet-4_gpt4.1_gpt-4o"
+DATASETS=("astropy__astropy.26d14786_submit")
 MODEL="Qwen/Qwen2.5-Coder-32B-instruct"
 MODEL_SLUG=$(echo "$MODEL" | sed 's|.*/||')
-EPOCHS=(3)
-LEARNING_RATES=(5e-5)
+EPOCHS=(3 2 1)
+LEARNING_RATES=(1e-4 5e-5 1e-5)
 CONTEXT_LENGTH=32768
     
 for EPOCH in "${EPOCHS[@]}"; do

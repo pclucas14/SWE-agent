@@ -34,6 +34,7 @@ from tenacity import (
     RetryCallState,
     Retrying,
     retry_if_not_exception_type,
+    retry_if_exception_message,
     stop_after_attempt,
     wait_random_exponential,
 )
@@ -1263,6 +1264,10 @@ class CopilotClaudeModel(LiteLLMModel):
                 self.logger.warning(
                     f"Retrying Copilot Claude query (attempt {retry_state.attempt_number}) due to {exception.__class__.__name__}: {exception}"
                 )
+            # Special handling for HMAC timestamp errors - clear client to force new token
+            if isinstance(exception, openai.AuthenticationError) and "HMAC timestamp out of range" in str(exception):
+                self.logger.info("Refreshing client due to HMAC timestamp error")
+                # self._client = None  # Clear client to force recreation with new HMAC
 
         # Custom retry loop for Copilot Claude API-specific errors
         for attempt in Retrying(
@@ -1275,10 +1280,10 @@ class CopilotClaudeModel(LiteLLMModel):
                 ContextWindowExceededError,
                 CostLimitExceededError,
                 ModelConfigurationError,
-                openai.AuthenticationError,
-                openai.BadRequestError,  # retry on RateLimitError, but NOT on these
+                # Remove openai.AuthenticationError from here to allow retry for HMAC timestamp errors
+                openai.BadRequestError,
                 KeyboardInterrupt,
-            )),
+            )) | retry_if_exception_message(match="HMAC timestamp out of range"),
             before_sleep=retry_warning,
         ):
             with attempt:
