@@ -28,7 +28,7 @@ CONFIG_FILE="swesmith_infer"
 # ------------------------------------------------------------------------------
 
 # Compute slug used inside run directory names, e.g. openai--SWE-bench--SWE-agent-LM-32B
-MODEL_SLUG=$(echo "$MODEL_NAME" | sed 's|/|--|g')
+MODEL_SLUG=$(echo "$MODEL_NAME" | sed 's|.*/||' | sed 's|/|--|g')
 
 # 1. Run the agent batch 3 times
 for i in $(seq 1 $NUM_ITERATIONS); do
@@ -59,7 +59,8 @@ for i in $(seq 1 $NUM_ITERATIONS); do
   echo "Looking for run directories with pattern: ${USER_RUN_ROOT}/${CONFIG_FILE}__${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}*"
 
   # Locate the run directory that matches this model and suffix
-  RUN_DIR=$(ls -td ${USER_RUN_ROOT}/${CONFIG_FILE}__${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}* 2>/dev/null | head -n1)
+  # Updated to handle different possible directory naming patterns
+  RUN_DIR=$(ls -td ${USER_RUN_ROOT}/${CONFIG_FILE}__*${MODEL_SLUG}*ms${MAX_STEPS}_mit${MAX_INPUT_TOKENS}_as${i}* 2>/dev/null | head -n1)
 
   if [[ -z "$RUN_DIR" ]]; then
     echo "Error: no run directory found for model '$MODEL_NAME' iteration $i." >&2
@@ -85,7 +86,7 @@ for i in $(seq 1 $NUM_ITERATIONS); do
   if ! python -m swebench.harness.run_evaluation \
       --dataset_name SWE-bench/SWE-bench_Verified \
       --predictions_path "$PREDICTIONS_PATH" \
-      --max_workers 24 \
+      --max_workers 72 \
       --run_id swebench_verified_run${i}; then
     echo "Error: Evaluation failed for iteration $i" >&2
     exit 1
