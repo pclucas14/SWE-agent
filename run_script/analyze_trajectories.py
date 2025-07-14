@@ -455,6 +455,15 @@ Example:
                             cached_results[cache_key] = result
                             save_cached_results(cache_file, cached_results)
                 
+                # ── NEW: add cached-only models ────────────────────────────────
+                for cache_key, cached_result in cached_results.items():
+                    if cache_key.endswith(f"_{filter_name}"):
+                        model_name = cache_key[:-(len(filter_name) + 1)]
+                        # If the model was not just analyzed (folder missing) add it
+                        if model_name not in all_results:
+                            all_results[model_name] = cached_result
+                # ───────────────────────────────────────────────────────────────
+
                 # Display summary for this filter
                 display_multi_model_summary(all_results, filter_name)
         else:
@@ -479,6 +488,14 @@ Example:
                     if result is not None:
                         cached_results[cache_key] = result
                         save_cached_results(cache_file, cached_results)
+            
+            # ── NEW: include cached-only models for single filter ─────────────
+            for cache_key, cached_result in cached_results.items():
+                if cache_key.endswith(f"_{args.filter_function}"):
+                    model_name = cache_key[:-(len(args.filter_function) + 1)]
+                    if model_name not in all_results:
+                        all_results[model_name] = cached_result
+            # ────────────────────────────────────────────────────────────────
             
             # Display summary
             display_multi_model_summary(all_results, args.filter_function)
