@@ -7,10 +7,9 @@ set -Eeuo pipefail
 #                └───────────┘└────────────────────┘
 MODEL_DIR_PREFIX="/home/zhengyanshi/project/SWE-agent" 
 MODELS=(
-  "${MODEL_DIR_PREFIX}/amlt/crucial-anchovy/tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep3_astropy__astropy.26d14786_full_claude-sonnet-4/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep3_astropy__astropy.26d14786_full_claude-sonnet-4"
-  "${MODEL_DIR_PREFIX}/amlt/balanced-yak/tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep3_astropy__astropy.26d14786_ml32700_claude-sonnet-4/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep3_astropy__astropy.26d14786_ml32700_claude-sonnet-4"
-  "${MODEL_DIR_PREFIX}/amlt/excited-escargot/tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep3_astropy__astropy.26d14786_full_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep3_astropy__astropy.26d14786_full_gpt-4o"
-  "${MODEL_DIR_PREFIX}/amlt/suitable-wasp/tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep3_astropy__astropy.26d14786_ml32700_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep3_astropy__astropy.26d14786_ml32700_gpt-4o"
+  "${MODEL_DIR_PREFIX}/amlt/assured-drake/tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_0::tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
+  "${MODEL_DIR_PREFIX}/amlt/mint-orca/tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep2_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_1::tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep2_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
+  "${MODEL_DIR_PREFIX}/amlt/pumped-grizzly/tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
   # add more here ...
 )
 ################################################################################
