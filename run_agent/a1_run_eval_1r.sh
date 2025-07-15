@@ -9,6 +9,8 @@ set -euo pipefail
 # --- user-controlled settings -------------------------------------------------
 INSTANCE_IDS="astropy__astropy-12907|astropy__astropy-13033|astropy__astropy-13236|astropy__astropy-13398|astropy__astropy-13453|astropy__astropy-13579|astropy__astropy-13977|astropy__astropy-14096|astropy__astropy-14182|astropy__astropy-14309|astropy__astropy-14365|astropy__astropy-14369|astropy__astropy-14508|astropy__astropy-14539|astropy__astropy-14598|astropy__astropy-14995|astropy__astropy-7166|astropy__astropy-7336|astropy__astropy-7606|astropy__astropy-7671|astropy__astropy-8707|astropy__astropy-8872"
 REPO=astropy__astropy
+INSTANCE_IDS="pylint-dev__pylint-4551|pylint-dev__pylint-4604|pylint-dev__pylint-4661|pylint-dev__pylint-4970|pylint-dev__pylint-6386|pylint-dev__pylint-6528|pylint-dev__pylint-6903|pylint-dev__pylint-7080|pylint-dev__pylint-7277|pylint-dev__pylint-8898"
+REPO=pylint-dev__pylint
 
 # Require MODEL_NAME as command line argument
 if [[ $# -eq 0 ]]; then

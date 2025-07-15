@@ -7,9 +7,9 @@ set -Eeuo pipefail
 #                └───────────┘└────────────────────┘
 MODEL_DIR_PREFIX="/home/zhengyanshi/project/SWE-agent" 
 MODELS=(
-  "${MODEL_DIR_PREFIX}/amlt/crack-muskrat/tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_0::tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
-  "${MODEL_DIR_PREFIX}/amlt/complete-sculpin/tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep2_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_1::tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep2_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
-  "${MODEL_DIR_PREFIX}/amlt/certain-sunbird/tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
+  "${MODEL_DIR_PREFIX}/amlt/driven-mayfly/tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep1_pylint-dev__pylint.1f8c4d9e_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_0::tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep1_pylint-dev__pylint.1f8c4d9e_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
+  "${MODEL_DIR_PREFIX}/amlt/enough-toucan/tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep1_pylint-dev__pylint.1f8c4d9e_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_0::tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep1_pylint-dev__pylint.1f8c4d9e_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
+  "${MODEL_DIR_PREFIX}/amlt/peaceful-turtle/tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep1_pylint-dev__pylint.1f8c4d9e_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_0::tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep1_pylint-dev__pylint.1f8c4d9e_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
   # "${MODEL_DIR_PREFIX}/amlt/crack-muskrat/tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_0::tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
 )
 ################################################################################
