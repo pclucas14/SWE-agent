@@ -26,6 +26,36 @@ import re
 
 XML_STR_REPLACES = ["old_str", "new_str", "file_text"]
 
+def count_tokens_approximate(text: str) -> int:
+    """Approximate token count using character count / 4 heuristic."""
+    return len(text) // 4
+
+def truncate_user_message(content: str, max_tokens: int = 2000) -> str:
+    """Truncate user message if it exceeds token limit, keeping start and end."""
+    if not content:
+        return content
+    
+    token_count = count_tokens_approximate(content)
+    if token_count <= max_tokens:
+        return content
+    
+    # Keep roughly 40% from start, 40% from end, with (...) in between
+    target_tokens = max_tokens - 20  # Reserve tokens for truncation marker
+    start_tokens = int(target_tokens * 0.4)
+    end_tokens = int(target_tokens * 0.4)
+    
+    # Convert back to character positions (approximate)
+    start_chars = start_tokens * 4
+    end_chars = end_tokens * 4
+    
+    if start_chars + end_chars >= len(content):
+        return content
+    
+    start_part = content[:start_chars].rstrip()
+    end_part = content[-end_chars:].lstrip()
+    
+    return f"{start_part}\n\n(...)\n\n{end_part}"
+
 
 # TODO: Fix this, this is hardcoded, so will break if not called from root of a directory
 SYSTEM_PROMPT = yaml.safe_load(open("agent/swesmith_infer.yaml", "r"))["agent"][
@@ -52,7 +82,7 @@ def filter_code_blocks(text):
     return filtered_text.strip()
 
 
-def transform_traj_xml(traj: dict) -> dict:
+def transform_traj_xml(traj: dict, max_user_tokens: int = 2000) -> dict:
     def tool_call_to_action(tool_calls):
         actions = []
         if tool_calls is None:
@@ -95,6 +125,9 @@ def transform_traj_xml(traj: dict) -> dict:
                 content = message["content"]
             else:
                 raise ValueError(f"Message type not recognized: {type(message)}")
+            
+            # Truncate user messages if they're too long
+            content = truncate_user_message(content, max_user_tokens)
         new_traj.append({"role": role, "content": content})
     return {"messages": new_traj}
 
@@ -156,7 +189,7 @@ def extract_agent_config(trajectories_folder):
     return os.path.basename(trajectories_folder.rstrip('/'))
 
 
-def process_trajectories(eval_file_path, trajectories_folder):
+def process_trajectories(eval_file_path, trajectories_folder, max_user_tokens=2000):
     """
     Main function to process evaluation results and extract trajectory histories.
     
@@ -193,7 +226,7 @@ def process_trajectories(eval_file_path, trajectories_folder):
 
     for instance_id in resolved_ids:
         trajectory_path = os.path.join(trajectories_folder, instance_id, f"{instance_id}.traj")
-        traj = transform_traj_xml(json.load(open(trajectory_path, "r")))
+        traj = transform_traj_xml(json.load(open(trajectory_path, "r")), max_user_tokens)
 
         dataset_data['instance_id'].append(instance_id)
         dataset_data['agent_config'].append(agent_config)
@@ -435,6 +468,7 @@ Example:
     parser.add_argument("--output_plot", type=str, default=None, help="Output plot filename")
     parser.add_argument("--count_tokens", type=bool, default=True, help="Whether to count tokens after applying chat template")
     parser.add_argument("--max_length", type=int, default=32700, help="Maximum length of tokenized input (default: 32768)")
+    parser.add_argument("--max_user_tokens", type=int, default=2000, help="Maximum number of tokens for user messages before truncation (default: 2000)")
     args = parser.parse_args()
     
     # Auto-derive eval file path if not provided
@@ -452,7 +486,7 @@ Example:
         sys.exit(1)
     
     # Process trajectories
-    dataset = process_trajectories(args.eval_file, args.trajectories_folder)
+    dataset = process_trajectories(args.eval_file, args.trajectories_folder, args.max_user_tokens)
     
     if dataset is None:
         print("No dataset created due to errors or no data")
