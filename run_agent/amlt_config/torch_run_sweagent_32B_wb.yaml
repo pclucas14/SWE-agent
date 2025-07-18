@@ -1,0 +1,57 @@
+description: Train SWE-agent-LM-32B Model using torch tune
+environment:
+  image: rocm6.4_ubuntu24.04_py3.12_pytorch2.6.0_flashattn_transformers:latest
+  registry: msrmtlacr.azurecr.io
+  env:
+    WANDB_API_KEY: $WANDB_API_KEY
+    WANDB_BASE_URL: $WANDB_BASE_URL
+    # WANDB_DISABLED: "true" # disable wandb
+    # WANDB_MODE: disabled
+    HF_HUB_READ_TIMEOUT: 100
+    NCCL_TIMEOUT: 1800
+    NCCL_BLOCKING_WAIT: "1"
+    TORCH_NCCL_ASYNC_ERROR_HANDLING: "1"
+  setup:
+    - sudo apt update && sudo apt install -y git python3-apt
+
+code:
+  local_dir: $CONFIG_DIR/../..
+
+jobs:
+- name: torch_run_sweagent_32B_1r1m
+  submit_args:
+    env:
+      _AZUREML_SINGULARITY_JOB_UAI: $AZUREML_SINGULARITY_JOB_UAI
+  sku: G8
+  process_count_per_node: 1 # 8 # 4 GPUs. 
+  command:
+  - cat /opt/rocm/.info/version
+  - rocm-smi
+  - rocm-smi --showdriverversion
+  - echo $$PATH
+  - echo $$LD_LIBRARY_PATH
+  - echo $$AMLT_OUTPUT_DIR
+  - env
+
+  - export PATH="$$HOME/.local/bin:$$PATH"
+  - python -m pip install --upgrade pip
+  - python -m pip install ipython ipdb
+  - pip install wandb
+  - wandb login --relogin $$WANDB_API_KEY
+  - echo $$WANDB_API_KEY | wandb login
+  - pip install hiredis
+
+  - pip install torchao
+  - pip install torchtune
+
+  - |
+    tune download SWE-bench/SWE-agent-LM-32B \
+      --output-dir llm-weights/SWE-bench/SWE-agent-LM-32B \
+      --ignore-patterns "original/consolidated.00.pth"
+  # - python -c "from datasets import load_dataset; ds=load_dataset('SWE-bench/SWE-smith-trajectories', split='train'); ds.to_json('datasets/ft_xml_all.jsonl')"
+
+  - mkdir -p ckpt
+  - |
+    tune run --nnodes 1 --nproc_per_node 8 full_finetune_distributed \
+      --config run_agent/torchrun_config/full_ft_sweagent_32b.yml \
+      $EXTRA_ARGS output_dir=./ckpt && cp -r ./ckpt/* $$AMLT_OUTPUT_DIR
