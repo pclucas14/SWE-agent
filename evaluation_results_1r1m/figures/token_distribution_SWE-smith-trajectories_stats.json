@@ -1,0 +1,20 @@
+{
+  "total_samples": 5016,
+  "failed_samples": 0,
+  "min_length": 2450,
+  "max_length": 248586,
+  "avg_length": 27000.332137161084,
+  "median_length": 21858.5,
+  "std_length": 17676.926782013627,
+  "percentiles": {
+    "p25": 15196.0,
+    "p50": 21858.5,
+    "p75": 33343.0,
+    "p90": 50304.0,
+    "p95": 61361.25,
+    "p99": 86906.40000000008
+  },
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "dataset": "SWE-bench/SWE-smith-trajectories",
+  "split": "train"
+}

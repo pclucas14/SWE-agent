@@ -1,0 +1,20 @@
+{
+  "total_samples": 1370,
+  "failed_samples": 0,
+  "min_length": 3817,
+  "max_length": 85699,
+  "avg_length": 21588.391240875913,
+  "median_length": 18841.0,
+  "std_length": 12414.545735279802,
+  "percentiles": {
+    "p25": 12023.0,
+    "p50": 18841.0,
+    "p75": 28753.0,
+    "p90": 36582.80000000002,
+    "p95": 42620.4,
+    "p99": 62052.55999999997
+  },
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "dataset": "data/automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10/swesmith_gen_claude__claude-sonnet-4_gpt4.1_gpt-4o__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps/astropy__astropy.26d14786_submit.json",
+  "split": "train"
+}
