@@ -9,22 +9,25 @@ set -euo pipefail
 #                └───────────┘└────────────────────┘
 MODEL_DIR_PREFIX="/home/zhengyanshi/project/SWE-agent" 
 MODELS=(
-  "${MODEL_DIR_PREFIX}/amlt/mint-orca/tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep2_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_1::tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep2_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
-  "${MODEL_DIR_PREFIX}/amlt/pumped-grizzly/tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
-  # add more here ...
+  # "${MODEL_DIR_PREFIX}/amlt/pumped-grizzly/tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
+  # "${MODEL_DIR_PREFIX}/amlt/one-liger/tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
+  "${MODEL_DIR_PREFIX}/amlt/certain-sunbird/tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
+
+  # "${MODEL_DIR_PREFIX}/amlt/assured-drake/tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_0::tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
+  # "${MODEL_DIR_PREFIX}/amlt/normal-primate/tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_0::tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
+  # "${MODEL_DIR_PREFIX}/amlt/amlt/crack-muskrat/tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_0::tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
+
 )
 ################################################################################
 
 # --- user-controlled settings -------------------------------------------------
 HOME_PATH="/home/zhengyanshi/project"
 USER_RUN_ROOT="trajectories/zhengyanshi@microsoft.com"
-# REPO_NAME="pylint-dev__pylint.1f8c4d9e"
-REPO_NAME="astropy__astropy.26d14786"
 CONFIG_FILE="swesmith_infer"
 NUM_WORKERS=32
 MAX_STEPS=75
 COST_LIMIT=0  # Set to 0 for local vLLM endpoint
-NUM_ITERATIONS=1
+NUM_ITERATIONS=4
 SWESMITH_TASK_NAME=automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10
 TRAJ_PATH=swesmith_gen_claude__claude-sonnet-4_gpt4.1_gpt-4o__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps
 
@@ -104,7 +107,7 @@ for ENTRY in "${MODELS[@]}"; do
   echo "vLLM is ready!"
 
   # 4) Run the SWE-agent iterations
-  for i in $(seq 1 $NUM_ITERATIONS); do
+  for i in $(seq 2 $NUM_ITERATIONS); do
     echo "Running agent batch iteration $i/$NUM_ITERATIONS..."
     python sweagent/run/run_1r1m_batch.py \
         --config agent/${CONFIG_FILE}.yaml \
@@ -121,8 +124,8 @@ for ENTRY in "${MODELS[@]}"; do
         --instances.path  ${TASK_DATA_PATH} \
         --instances.shuffle=True
 
-    echo "Looking for run directories with pattern: ${USER_RUN_ROOT}/${CONFIG_FILE}__${MODEL_SLUG}*${REPO_NAME}*ms${MAX_STEPS}_as${i}_sanity_check*"
-    RUN_DIR=$(ls -td ${USER_RUN_ROOT}/${CONFIG_FILE}__${MODEL_SLUG}*${REPO_NAME}*ms${MAX_STEPS}_as${i}_sanity_check* 2>/dev/null | head -n1)
+    echo "Looking for run directories with pattern: ${USER_RUN_ROOT}/${CONFIG_FILE}__${MODEL_SLUG}*ms${MAX_STEPS}_as${i}_sanity_check*"
+    RUN_DIR=$(ls -td ${USER_RUN_ROOT}/${CONFIG_FILE}__${MODEL_SLUG}*ms${MAX_STEPS}_as${i}_sanity_check* 2>/dev/null | head -n1)
     if [[ -z "$RUN_DIR" ]]; then
         echo "Error: no run directory found for model '$MODEL_NAME' iteration $i." >&2
         exit 1

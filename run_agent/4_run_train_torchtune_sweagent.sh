@@ -38,7 +38,7 @@ DATASETS=("pylint-dev__pylint.1f8c4d9e_submit")
 
 MODEL="SWE-bench/SWE-agent-LM-32B"
 MODEL_SLUG=$(echo "$MODEL" | sed 's|.*/||')
-EPOCHS=(3 2 1)
+EPOCHS=(5)
 LEARNING_RATES=(5e-5 1e-4 1e-5)
 CONTEXT_LENGTH=32768
 # CONTEXT_LENGTH=131072

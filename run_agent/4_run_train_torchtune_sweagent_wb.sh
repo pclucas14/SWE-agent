@@ -31,14 +31,14 @@ DATA_FOLDER=data/automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_p
 TRAJ_MODEL="claude__claude-sonnet-4_gpt4.1_gpt-4o"
 DATASETS=("astropy__astropy.26d14786_submit")
 
-DATA_FOLDER=data/automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10/swesmith_gen_claude__claude-sonnet-4_gpt4.1_gpt-4o__t-0.00__p-1.00__c-2.00___patch_swesmith_pylint-dev__pylint.1f8c4d9e_ps
-TRAJ_MODEL="claude__claude-sonnet-4_gpt4.1_gpt-4o"
-DATASETS=("pylint-dev__pylint.1f8c4d9e_submit")
+# DATA_FOLDER=data/automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10/swesmith_gen_claude__claude-sonnet-4_gpt4.1_gpt-4o__t-0.00__p-1.00__c-2.00___patch_swesmith_pylint-dev__pylint.1f8c4d9e_ps
+# TRAJ_MODEL="claude__claude-sonnet-4_gpt4.1_gpt-4o"
+# DATASETS=("pylint-dev__pylint.1f8c4d9e_submit")
 
 
 MODEL="SWE-bench/SWE-agent-LM-32B"
 MODEL_SLUG=$(echo "$MODEL" | sed 's|.*/||')
-EPOCHS=(10)
+EPOCHS=(7)
 LEARNING_RATES=(1e-4)
 CONTEXT_LENGTH=32768
 # CONTEXT_LENGTH=131072
@@ -51,7 +51,7 @@ for EPOCH in "${EPOCHS[@]}"; do
             amlt run run_agent/amlt_config/torch_run_sweagent_32B_wb.yaml :torch_run_sweagent_32B_1r1m=$JOB_NAME \
                 -t $VC_NAME \
                 -w $WORKSPACE_NAME \
-                -x "dataset.data_files=$DATA_FOLDER/$DATASET.json epochs=$EPOCH optimizer.lr=$LEARNING_RATE tokenizer.max_seq_len=$CONTEXT_LENGTH exp_name=$JOB_NAME" \
+                -x "dataset.data_files=$DATA_FOLDER/$DATASET.json epochs=$EPOCH optimizer.lr=$LEARNING_RATE tokenizer.max_seq_len=$CONTEXT_LENGTH exp_name=$JOB_NAME dataset_val.data_files=$DATA_FOLDER/$DATASET.json" \
                 -y -d "Train SWE-agent-LM-32B Model on Froggy dataset using torch tune and wb"
         done
     done

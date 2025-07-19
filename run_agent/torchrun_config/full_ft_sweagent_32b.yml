@@ -60,7 +60,7 @@ dataset:
   _component_: torchtune.datasets.chat_dataset
   source: json
   data_files: datasets/ft_xml_all.jsonl
-  split: train
+  split: train[:95%]
   conversation_column: messages
   conversation_style: openai
   train_on_input: False
@@ -69,6 +69,20 @@ dataset:
 seed: 42
 shuffle: True
 batch_size: 1
+
+# Validation
+run_val_every_n_steps: 10
+dataset_val:
+  _component_: torchtune.datasets.chat_dataset
+  source: json
+  data_files: datasets/ft_xml_all.jsonl
+  split: train[95%:]
+  conversation_column: messages
+  conversation_style: openai
+  train_on_input: False
+  new_system_prompt: null
+  packed: False
+batch_size_val: 1
 
 # Optimizer and Scheduler
 optimizer:
@@ -97,6 +111,9 @@ metric_logger:
   job_type: full_finetune_distributed
 log_every_n_steps: 1
 log_peak_memory_stats: True
+
+# Validation logging
+log_val_loss: True
 
 # Environment
 device: cuda
