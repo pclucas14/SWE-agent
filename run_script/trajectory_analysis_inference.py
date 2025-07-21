@@ -53,12 +53,13 @@ try:
 except ImportError:
     HAS_SEABORN = False
 
+# tqdm import for progress bars
 try:
     from tqdm import tqdm
     HAS_TQDM = True
 except ImportError:
     # Fallback if tqdm is not available
-    def tqdm(iterable, **kwargs):
+    def tqdm(iterable, **_):
         return iterable
     HAS_TQDM = False
 
@@ -142,7 +143,14 @@ class TrajectoryAnalyzer:
         if cache_path.exists():
             try:
                 with open(cache_path, 'rb') as f:
-                    return pickle.load(f)
+                    cached_data = pickle.load(f)
+                    
+                    # Backward compatibility: add action_transitions if missing
+                    if "action_transitions" not in cached_data:
+                        print(f"Note: Cache for {folder_path} is missing action_transitions, will regenerate")
+                        return {}  # Force regeneration for complete data
+                    
+                    return cached_data
             except Exception as e:
                 print(f"Warning: Failed to load cache for {folder_path}: {e}")
         return {}
@@ -271,9 +279,12 @@ class TrajectoryAnalyzer:
         tool_counts = Counter()
         command_counts = Counter()
         step_actions = {}  # step_number -> Counter of actions
+        action_transitions = Counter()  # (action1, action2) -> count
         final_step_action = None  # Track the final step action for this trajectory
         
         assistant_step = 0
+        previous_action = None
+        
         for message in messages:
             if message.get("role") == "assistant" and "action" in message:
                 assistant_step += 1
@@ -294,18 +305,25 @@ class TrajectoryAnalyzer:
                     command_counts[command] += 1
                     full_action = command
                 
+                # Track action transitions
+                if previous_action is not None:
+                    transition = (previous_action, full_action)
+                    action_transitions[transition] += 1
+                
                 # Track action by step
                 if assistant_step not in step_actions:
                     step_actions[assistant_step] = Counter()
                 step_actions[assistant_step][full_action] += 1
                 
-                # Update final step action (will be the last one processed)
+                # Update for next iteration
+                previous_action = full_action
                 final_step_action = full_action
         
         return {
             "tools": tool_counts,
             "commands": command_counts,
             "step_actions": step_actions,
+            "action_transitions": action_transitions,
             "final_step_action": final_step_action
         }
 
@@ -326,7 +344,7 @@ class TrajectoryAnalyzer:
         traj_files = self._find_trajectory_files(folder_path)
         if not traj_files:
             print(f"No trajectory files found in {folder_path}")
-            return {"tools": Counter(), "commands": Counter(), "step_actions": {}, "final_step_actions": Counter()}
+            return {"tools": Counter(), "commands": Counter(), "step_actions": {}, "action_transitions": Counter(), "final_step_actions": Counter()}
         
         print(f"Found {len(traj_files)} trajectory files")
         
@@ -334,6 +352,7 @@ class TrajectoryAnalyzer:
         total_tool_counts = Counter()
         total_command_counts = Counter()
         total_step_actions = {}  # step_number -> Counter of actions across all files
+        total_action_transitions = Counter()  # Counter of all action transitions
         final_step_actions = Counter()  # Counter of all final step actions across trajectories
         
         # Process files in batches to avoid memory issues
@@ -353,6 +372,7 @@ class TrajectoryAnalyzer:
                 analysis = self._analyze_messages(messages)
                 total_tool_counts.update(analysis["tools"])
                 total_command_counts.update(analysis["commands"])
+                total_action_transitions.update(analysis["action_transitions"])
                 
                 # Aggregate step actions
                 for step, actions in analysis["step_actions"].items():
@@ -368,6 +388,7 @@ class TrajectoryAnalyzer:
             "tools": total_tool_counts,
             "commands": total_command_counts,
             "step_actions": total_step_actions,
+            "action_transitions": total_action_transitions,
             "final_step_actions": final_step_actions
         }
         
@@ -514,6 +535,66 @@ class TrajectoryAnalyzer:
         # Improve tick labels
         ax.tick_params(axis='both', labelsize=10)
 
+    def _create_action_transition_plot(self, ax, action_transitions, short_name):
+        """Create action transition heatmap/distribution plot."""
+        if not action_transitions:
+            ax.text(0.5, 0.5, 'No transition data', ha='center', va='center', 
+                   transform=ax.transAxes, fontsize=14)
+            ax.set_title(f'Action Transitions: {short_name}', fontsize=14, fontweight='bold')
+            return
+        
+        # Get top 15 most frequent transitions for better readability
+        top_transitions = dict(action_transitions.most_common(15))
+        
+        if not top_transitions:
+            ax.text(0.5, 0.5, 'No transition data', ha='center', va='center', 
+                   transform=ax.transAxes, fontsize=14)
+            ax.set_title(f'Action Transitions: {short_name}', fontsize=14, fontweight='bold')
+            return
+        
+        # Prepare data for plotting - sort in descending order
+        sorted_items = sorted(top_transitions.items(), key=lambda x: x[1], reverse=True)
+        total_transitions = sum(action_transitions.values())
+        
+        # Create labels showing transition and frequency - DO NOT truncate, show full labels
+        labels = []
+        percentages = []
+        counts = []
+        
+        for (from_action, to_action), count in sorted_items:
+            # Show FULL action names without truncation
+            percentage = (count / total_transitions) * 100
+            percentages.append(percentage)
+            counts.append(count)
+            labels.append(f"{from_action} → {to_action}")
+        
+        # Create horizontal bar chart
+        y_pos = range(len(labels))
+        colors = plt.cm.viridis([p/max(percentages) for p in percentages])
+        bars = ax.barh(y_pos, percentages, color=colors)
+        
+        # Customize the plot
+        ax.set_yticks(y_pos)
+        ax.set_yticklabels(labels, fontsize=7)  # Smaller font for full labels
+        ax.set_xlabel('Percentage of Total Transitions (%)', fontsize=10)
+        ax.set_title(f'Top Action Transitions: {short_name}', fontsize=14, fontweight='bold', pad=20)
+        ax.grid(axis='x', alpha=0.3)
+        
+        # Put percentage labels INSIDE the bars on the right side for better readability
+        for bar, percentage, count in zip(bars, percentages, counts):
+            width = bar.get_width()
+            # Place text inside the bar, towards the right end
+            ax.text(width * 0.95, bar.get_y() + bar.get_height()/2, 
+                   f'{percentage:.1f}% ({count})', ha='right', va='center', 
+                   fontsize=8, fontweight='bold', color='white')
+        
+        # Remove top and right spines
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        
+        # Improve tick labels
+        ax.tick_params(axis='both', labelsize=8)
+
     def create_visualization(self, folder_results: Dict[str, Dict[str, Counter]], output_dir: str = "plots"):
         """Create visualization plots for analysis results."""
         if not HAS_PLOTTING:
@@ -562,20 +643,32 @@ class TrajectoryAnalyzer:
             action_colors[action] = palette(color_idx / 7)  # Divide by 7 to get good spread
         
         
-        # Create subplots with 3 columns: tools, commands, step actions
+        # Create subplots with 4 columns: tools, commands, step actions, action transitions
         fig_height = max(8, 4 * num_folders)
-        # Use gridspec to control column widths - make third column narrower
+        # Use gridspec to control column widths and spacing
         from matplotlib import gridspec
-        fig = plt.figure(figsize=(24, fig_height))
-        gs = gridspec.GridSpec(num_folders, 3, width_ratios=[1, 1, 0.8], hspace=0.5, wspace=0.4, top=0.93)
+        fig = plt.figure(figsize=(45, fig_height))
+        # Use 6 columns with spacers for better layout - extra spacer between 3rd and 4th columns
+        # Increase width ratio for 4th column to accommodate full action transition labels
+        # Increased spacing between 3rd and 4th columns from 0.3 to 0.6 for better readability
+        gs = gridspec.GridSpec(num_folders, 6, width_ratios=[1, 0.1, 1, 0.8, 0.6, 2.0], hspace=0.5, wspace=0.4, top=0.93)
         
-        # Create axes manually with gridspec
+        # Create axes manually with gridspec, skipping the spacer columns
         axes = []
         for i in range(num_folders):
             row_axes = []
-            for j in range(3):
-                ax = fig.add_subplot(gs[i, j])
-                row_axes.append(ax)
+            # Column 0: tools
+            ax = fig.add_subplot(gs[i, 0])
+            row_axes.append(ax)
+            # Column 2: commands (skipping column 1 which is spacer)
+            ax = fig.add_subplot(gs[i, 2])
+            row_axes.append(ax)
+            # Column 3: step actions
+            ax = fig.add_subplot(gs[i, 3])
+            row_axes.append(ax)
+            # Column 5: action transitions (skipping column 4 which is spacer)
+            ax = fig.add_subplot(gs[i, 5])
+            row_axes.append(ax)
             axes.append(row_axes)
         
         # Convert to array for easier indexing
@@ -584,7 +677,7 @@ class TrajectoryAnalyzer:
             axes = axes.reshape(1, -1)
         
         # Create a single title for the entire figure with better positioning
-        fig.suptitle('Trajectory Analysis Results', fontsize=20, fontweight='bold', y=0.97)
+        fig.suptitle('Trajectory Analysis Results with Action Transitions', fontsize=20, fontweight='bold', y=0.97)
         
         for i, (folder_path, results) in enumerate(folder_results.items()):
             short_name = self._get_short_folder_name(folder_path)
@@ -593,6 +686,7 @@ class TrajectoryAnalyzer:
             ax_tools = axes[i][0]
             ax_commands = axes[i][1] 
             ax_steps = axes[i][2]
+            ax_transitions = axes[i][3]
                 
             tools_data = results["tools"]
             if tools_data:
@@ -659,6 +753,10 @@ class TrajectoryAnalyzer:
             step_actions_data = results.get("step_actions", {})
             final_step_actions = results.get("final_step_actions", Counter())
             self._create_step_action_plot(ax_steps, step_actions_data, final_step_actions, short_name, action_colors)
+            
+            # Plot action transitions
+            action_transitions = results.get("action_transitions", Counter())
+            self._create_action_transition_plot(ax_transitions, action_transitions, short_name)
         
         # Save plot with higher quality
         output_file = output_dir / "trajectory_analysis.png"
@@ -678,6 +776,7 @@ class TrajectoryAnalyzer:
             tools_data = results["tools"]
             commands_data = results["commands"]
             step_actions_data = results.get("step_actions", {})
+            action_transitions = results.get("action_transitions", Counter())
             final_step_actions = results.get("final_step_actions", Counter())
             
             print(f"\nFolder: {folder_name}")
@@ -722,6 +821,19 @@ class TrajectoryAnalyzer:
                         for action, count in final_step_actions.most_common(3):
                             percentage = (count / total_final_actions) * 100
                             print(f"    {action:25} {count:4} ({percentage:4.1f}%)")
+                
+                # Show action transition analysis
+                if action_transitions:
+                    total_transitions = sum(action_transitions.values())
+                    print(f"\nTop 10 Action Transitions:")
+                    print(f"  Total transitions: {total_transitions}")
+                    
+                    for (from_action, to_action), count in action_transitions.most_common(10):
+                        percentage = (count / total_transitions) * 100
+                        # Truncate long action names for display
+                        from_short = from_action[:15] + "..." if len(from_action) > 15 else from_action
+                        to_short = to_action[:15] + "..." if len(to_action) > 15 else to_action
+                        print(f"    {from_short} → {to_short:18} {count:4} ({percentage:4.1f}%)")
             else:
                 print("No tool usage data found")
 

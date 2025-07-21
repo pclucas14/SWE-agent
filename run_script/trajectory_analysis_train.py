@@ -139,7 +139,14 @@ class TrainTrajectoryAnalyzer:
         if cache_path.exists():
             try:
                 with open(cache_path, 'rb') as f:
-                    return pickle.load(f)
+                    cached_data = pickle.load(f)
+                    
+                    # Backward compatibility: add action_transitions if missing
+                    if "action_transitions" not in cached_data:
+                        print(f"Note: Cache for {folder_path} is missing action_transitions, will regenerate")
+                        return {}  # Force regeneration for complete data
+                    
+                    return cached_data
             except Exception as e:
                 print(f"Warning: Failed to load cache for {folder_path}: {e}")
         return {}
@@ -744,10 +751,11 @@ class TrainTrajectoryAnalyzer:
         fig_height = max(8, 4 * num_folders)
         # Use gridspec to control column widths and spacing
         from matplotlib import gridspec
-        fig = plt.figure(figsize=(42, fig_height))
+        fig = plt.figure(figsize=(45, fig_height))
         # Use 6 columns with spacers for better layout - extra spacer between 3rd and 4th columns
         # Increase width ratio for 4th column to accommodate full action transition labels
-        gs = gridspec.GridSpec(num_folders, 6, width_ratios=[1, 0.1, 1, 0.8, 0.3, 2.0], hspace=0.5, wspace=0.4, top=0.93)
+        # Increased spacing between 3rd and 4th columns from 0.3 to 0.6 for better readability
+        gs = gridspec.GridSpec(num_folders, 6, width_ratios=[1, 0.1, 1, 0.8, 0.6, 2.0], hspace=0.5, wspace=0.4, top=0.93)
         
         # Create axes manually with gridspec, skipping the spacer columns
         axes = []

@@ -11,6 +11,7 @@ logs
 .amltignore
 .amltconfig
 amlt/
+cache
 
 # -------- automatically generated files --------
 
