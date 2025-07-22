@@ -93,6 +93,7 @@ metric_logger:
   _component_: torchtune.training.metric_logging.WandBLogger
   project: swesmith
   group: ${exp_name}
+  name: ${exp_name}
   job_type: full_finetune_distributed
 log_every_n_steps: 1
 log_peak_memory_stats: True
