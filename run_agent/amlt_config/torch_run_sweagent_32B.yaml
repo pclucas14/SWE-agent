@@ -5,8 +5,8 @@ environment:
   env:
     WANDB_API_KEY: $WANDB_API_KEY
     WANDB_BASE_URL: $WANDB_BASE_URL
-    WANDB_DISABLED: "true" # disable wandb
-    WANDB_MODE: disabled
+    # WANDB_DISABLED: "true" # disable wandb
+    # WANDB_MODE: disabled
     HF_HUB_READ_TIMEOUT: 100
     NCCL_TIMEOUT: 1800
     NCCL_BLOCKING_WAIT: "1"
