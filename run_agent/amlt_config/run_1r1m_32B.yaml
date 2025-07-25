@@ -5,7 +5,6 @@ environment:
   env:
     WANDB_API_KEY: $WANDB_API_KEY
     WANDB_BASE_URL: $WANDB_BASE_URL
-    WANDB_DISABLED: "true" # disable wandb
     HF_HUB_READ_TIMEOUT: 100
   setup:
     - sudo apt update && sudo apt install -y git python3-apt
