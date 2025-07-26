@@ -141,9 +141,15 @@ class TrainTrajectoryAnalyzer:
                 with open(cache_path, 'rb') as f:
                     cached_data = pickle.load(f)
                     
-                    # Backward compatibility: add action_transitions if missing
+                    # Backward compatibility: add missing fields if not present
+                    missing_fields = []
                     if "action_transitions" not in cached_data:
-                        print(f"Note: Cache for {folder_path} is missing action_transitions, will regenerate")
+                        missing_fields.append("action_transitions")
+                    if "combined_commands" not in cached_data:
+                        missing_fields.append("combined_commands")
+                    
+                    if missing_fields:
+                        print(f"Note: Cache for {folder_path} is missing {missing_fields}, will regenerate")
                         return {}  # Force regeneration for complete data
                     
                     return cached_data
@@ -349,10 +355,110 @@ class TrainTrajectoryAnalyzer:
         first_word = action.split()[0] if action.split() else "empty"
         return "other", first_word
 
+    def _parse_actions_with_multi_commands(self, content: str, message: dict = None) -> List[Tuple[str, str, str]]:
+        """
+        Parse action from message content and return both individual commands and combined action type.
+        
+        Returns:
+            List of tuples: (tool, command, action_type)
+            - action_type can be 'single' for single commands or 'multi' for multi-command actions
+        """
+        # First try to parse function calls from content
+        actions = self._parse_function_call_from_content(content)
+        
+        if not actions:
+            # Check if this is a system message
+            system_type = self._is_system_message(message) if message else None
+            if system_type:
+                return [("system", system_type, "single")]
+            
+            return [("other", "no_function_call", "single")]
+        
+        # Take the first action (usually there's only one per message)
+        action = actions[0]
+        
+        if not action or not isinstance(action, str):
+            return [("other", "empty_action", "single")]
+        
+        action = action.strip()
+        
+        # Check if this is a bash command with multiple '&&' operators
+        if '&&' in action and action.count('&&') >= 1:
+            # This is a multi-command action
+            individual_commands = []
+            
+            # Split by && and process each command
+            commands = [cmd.strip() for cmd in action.split('&&')]
+            
+            for cmd in commands:
+                if cmd:
+                    # Parse each individual command
+                    cmd_parts = cmd.split()
+                    if cmd_parts:
+                        first_cmd = cmd_parts[0]
+                        # Handle complex commands with pipes, redirects, etc.
+                        first_cmd = re.split(r'[|;&><]', first_cmd)[0].strip()
+                        # Remove common prefixes
+                        first_cmd = first_cmd.split('/')[-1]  # Get basename
+                        individual_commands.append(("bash", first_cmd, "multi"))
+            
+            return individual_commands if individual_commands else [("bash", "empty_multi", "multi")]
+        
+        # Handle single commands (existing logic)
+        action_lower = action.lower()
+        if not any(action_lower.startswith(tool) for tool in self.known_tools):
+            # This is likely a bash command
+            # Extract the first command from bash
+            command_parts = action.split()
+            if command_parts:
+                first_cmd = command_parts[0]
+                # Handle complex commands with pipes, redirects, etc.
+                first_cmd = re.split(r'[|;&><]', first_cmd)[0].strip()
+                return [("bash", first_cmd, "single")]
+            return [("bash", "empty_bash", "single")]
+        
+        # Handle str_replace_editor commands
+        if action.startswith('str_replace_editor '):
+            parts = action.split()
+            if len(parts) >= 2:
+                sub_command = parts[1]
+                if sub_command in self.str_replace_commands:
+                    return [("str_replace_editor", sub_command, "single")]
+                else:
+                    # Try to parse non-standard commands
+                    return [("str_replace_editor", f"other_{sub_command}", "single")]
+            return [("str_replace_editor", "no_subcommand", "single")]
+        
+        # Handle submit (case insensitive)
+        if action.lower().startswith('submit'):
+            return [("submit", "submit", "single")]
+        
+        # Handle other known tools
+        for tool in self.known_tools:
+            if action.startswith(tool):
+                return [(tool, tool, "single")]
+        
+        # Try to identify other common patterns
+        if 'python' in action.lower():
+            return [("bash", "python", "single")]
+        if 'git' in action.lower():
+            return [("bash", "git", "single")]
+        if 'pip' in action.lower():
+            return [("bash", "pip", "single")]
+        if 'cd' in action.lower():
+            return [("bash", "cd", "single")]
+        if 'ls' in action.lower():
+            return [("bash", "ls", "single")]
+        
+        # Last resort - categorize as other with first word
+        first_word = action.split()[0] if action.split() else "empty"
+        return [("other", first_word, "single")]
+
     def _analyze_messages(self, messages: List[dict]) -> Dict[str, Counter]:
         """Analyze assistant messages to extract tool usage."""
         tool_counts = Counter()
         command_counts = Counter()
+        combined_command_counts = Counter()  # New: Track combined multi-command actions
         step_actions = {}  # step_number -> Counter of actions
         action_transitions = Counter()  # (action1, action2) -> count
         final_step_action = None  # Track the final step action for this trajectory
@@ -365,40 +471,73 @@ class TrainTrajectoryAnalyzer:
                 assistant_step += 1
                 content = message.get("content", "")
                 
-                # Parse actions from content
-                tool, command = self._parse_action(content, message)
+                # Parse actions from content (new method for multi-command support)
+                parsed_actions = self._parse_actions_with_multi_commands(content, message)
                 
-                tool_counts[tool] += 1
-                if tool == "bash":
-                    command_counts[f"bash {command}"] += 1
-                    full_action = f"bash {command}"
-                elif tool == "str_replace_editor":
-                    command_counts[f"str_replace_editor {command}"] += 1
-                    full_action = f"str_replace_editor {command}"
-                elif tool == "system":
-                    command_counts[f"system {command}"] += 1
-                    full_action = f"system {command}"
-                else:
-                    command_counts[command] += 1
-                    full_action = command
+                # Process each parsed action
+                for tool, command, action_type in parsed_actions:
+                    # Count individual tools and commands for the first figure
+                    tool_counts[tool] += 1
+                    if tool == "bash":
+                        command_counts[f"bash {command}"] += 1
+                        full_action = f"bash {command}"
+                    elif tool == "str_replace_editor":
+                        command_counts[f"str_replace_editor {command}"] += 1
+                        full_action = f"str_replace_editor {command}"
+                    elif tool == "system":
+                        command_counts[f"system {command}"] += 1
+                        full_action = f"system {command}"
+                    else:
+                        command_counts[command] += 1
+                        full_action = command
+                    
+                    # Track action by step
+                    if assistant_step not in step_actions:
+                        step_actions[assistant_step] = Counter()
+                    step_actions[assistant_step][full_action] += 1
+                    
+                    # Update final step action
+                    final_step_action = full_action
                 
-                # Track action transitions
-                if previous_action is not None:
-                    transition = (previous_action, full_action)
+                # For multi-command actions, also track the combined action type
+                if len(parsed_actions) > 1 and all(action_type == "multi" for _, _, action_type in parsed_actions):
+                    # This is a multi-command action - create a combined action description
+                    command_names = [command for _, command, _ in parsed_actions]
+                    combined_action = f"multi: {' && '.join(command_names)}"
+                    combined_command_counts[combined_action] += 1
+                
+                # Track action transitions (using the first action for transitions)
+                if parsed_actions and previous_action is not None:
+                    first_full_action = parsed_actions[0]
+                    tool, command, _ = first_full_action
+                    if tool == "bash":
+                        current_action = f"bash {command}"
+                    elif tool == "str_replace_editor":
+                        current_action = f"str_replace_editor {command}"
+                    elif tool == "system":
+                        current_action = f"system {command}"
+                    else:
+                        current_action = command
+                    
+                    transition = (previous_action, current_action)
                     action_transitions[transition] += 1
-                
-                # Track action by step
-                if assistant_step not in step_actions:
-                    step_actions[assistant_step] = Counter()
-                step_actions[assistant_step][full_action] += 1
-                
-                # Update for next iteration
-                previous_action = full_action
-                final_step_action = full_action
+                    previous_action = current_action
+                elif parsed_actions:
+                    # Set previous action for first message
+                    tool, command, _ = parsed_actions[0]
+                    if tool == "bash":
+                        previous_action = f"bash {command}"
+                    elif tool == "str_replace_editor":
+                        previous_action = f"str_replace_editor {command}"
+                    elif tool == "system":
+                        previous_action = f"system {command}"
+                    else:
+                        previous_action = command
         
         return {
             "tools": tool_counts,
             "commands": command_counts,
+            "combined_commands": combined_command_counts,  # New field
             "step_actions": step_actions,
             "action_transitions": action_transitions,
             "final_step_action": final_step_action
@@ -408,6 +547,7 @@ class TrainTrajectoryAnalyzer:
         """Analyze trajectories from loaded data structure."""
         total_tool_counts = Counter()
         total_command_counts = Counter()
+        total_combined_command_counts = Counter()  # New: Track combined commands
         total_step_actions = {}
         total_action_transitions = Counter()
         final_step_actions = Counter()
@@ -437,6 +577,7 @@ class TrainTrajectoryAnalyzer:
             analysis = self._analyze_messages(messages)
             total_tool_counts.update(analysis["tools"])
             total_command_counts.update(analysis["commands"])
+            total_combined_command_counts.update(analysis["combined_commands"])  # New
             total_action_transitions.update(analysis["action_transitions"])
             
             # Aggregate step actions
@@ -452,6 +593,7 @@ class TrainTrajectoryAnalyzer:
         return {
             "tools": total_tool_counts,
             "commands": total_command_counts,
+            "combined_commands": total_combined_command_counts,  # New field
             "step_actions": total_step_actions,
             "action_transitions": total_action_transitions,
             "final_step_actions": final_step_actions
@@ -473,13 +615,13 @@ class TrainTrajectoryAnalyzer:
         # Check if file exists
         if not os.path.exists(file_path):
             print(f"File not found: {file_path}")
-            return {"tools": Counter(), "commands": Counter(), "step_actions": {}, "action_transitions": Counter(), "final_step_actions": Counter()}
+            return {"tools": Counter(), "commands": Counter(), "combined_commands": Counter(), "step_actions": {}, "action_transitions": Counter(), "final_step_actions": Counter()}
         
         # Load and analyze the trajectory file
         traj_data = self._load_trajectory_file(file_path)
         if not traj_data:
             print(f"Failed to load trajectory data from {file_path}")
-            return {"tools": Counter(), "commands": Counter(), "step_actions": {}, "action_transitions": Counter(), "final_step_actions": Counter()}
+            return {"tools": Counter(), "commands": Counter(), "combined_commands": Counter(), "step_actions": {}, "action_transitions": Counter(), "final_step_actions": Counter()}
         
         analysis = self._analyze_trajectories_from_data(traj_data)
         
@@ -747,15 +889,14 @@ class TrainTrajectoryAnalyzer:
             action_colors[action] = palette(color_idx / 7)  # Divide by 7 to get good spread
         
         
-        # Create subplots with 4 columns: tools, commands, step actions, action transitions
+        # Create subplots with 5 columns: tools, commands, combined commands, step actions, action transitions
         fig_height = max(8, 4 * num_folders)
         # Use gridspec to control column widths and spacing
         from matplotlib import gridspec
-        fig = plt.figure(figsize=(45, fig_height))
-        # Use 6 columns with spacers for better layout - extra spacer between 3rd and 4th columns
-        # Increase width ratio for 4th column to accommodate full action transition labels
-        # Increased spacing between 3rd and 4th columns from 0.3 to 0.6 for better readability
-        gs = gridspec.GridSpec(num_folders, 6, width_ratios=[1, 0.1, 1, 0.8, 0.6, 2.0], hspace=0.5, wspace=0.4, top=0.93)
+        fig = plt.figure(figsize=(55, fig_height))
+        # Use 8 columns with spacers for better layout - spacers between major sections
+        # Layout: tools | spacer | commands | small_spacer | combined | larger_spacer | step_actions | action_transitions
+        gs = gridspec.GridSpec(num_folders, 8, width_ratios=[1, 0.05, 1, 0.005, 1.2, 0.15, 1.4, 2.0], hspace=0.5, wspace=0.4, top=0.93)
         
         # Create axes manually with gridspec, skipping the spacer columns
         axes = []
@@ -767,11 +908,14 @@ class TrainTrajectoryAnalyzer:
             # Column 2: commands (skipping column 1 which is spacer)
             ax = fig.add_subplot(gs[i, 2])
             row_axes.append(ax)
-            # Column 3: step actions
-            ax = fig.add_subplot(gs[i, 3])
+            # Column 4: combined commands (skipping column 3 which is spacer)
+            ax = fig.add_subplot(gs[i, 4])
             row_axes.append(ax)
-            # Column 5: action transitions (skipping column 4 which is spacer)
-            ax = fig.add_subplot(gs[i, 5])
+            # Column 6: step actions (skipping column 5 which is spacer)
+            ax = fig.add_subplot(gs[i, 6])
+            row_axes.append(ax)
+            # Column 7: action transitions
+            ax = fig.add_subplot(gs[i, 7])
             row_axes.append(ax)
             axes.append(row_axes)
         
@@ -789,8 +933,9 @@ class TrainTrajectoryAnalyzer:
             # Plot tool usage
             ax_tools = axes[i][0]
             ax_commands = axes[i][1] 
-            ax_steps = axes[i][2]
-            ax_transitions = axes[i][3]
+            ax_combined = axes[i][2]
+            ax_steps = axes[i][3]
+            ax_transitions = axes[i][4]
                 
             tools_data = results["tools"]
             if tools_data:
@@ -853,6 +998,38 @@ class TrainTrajectoryAnalyzer:
                 ax_commands.text(0.5, 0.5, 'No data', ha='center', va='center', transform=ax_commands.transAxes, fontsize=14)
                 ax_commands.set_title(f'Commands: {short_name}', fontsize=14, fontweight='bold')
             
+            # Plot combined command usage (top 10)
+            combined_commands_data = results.get("combined_commands", Counter())
+            if combined_commands_data:
+                # Get top 10 combined commands for better readability
+                top_combined = dict(combined_commands_data.most_common(10))
+                combined_df = pd.DataFrame(list(top_combined.items()), columns=['Combined Command', 'Count'])
+                combined_df = combined_df.sort_values('Count', ascending=True)
+                
+                # Use distinct colors for combined commands
+                colors = plt.cm.tab20([i/len(combined_df) for i in range(len(combined_df))])
+                bars = ax_combined.barh(combined_df['Combined Command'], combined_df['Count'], color=colors)
+                ax_combined.set_title(f'Multi-Commands: {short_name}', fontsize=14, fontweight='bold', pad=20)
+                ax_combined.set_xlabel('Frequency', fontsize=12)
+                ax_combined.grid(axis='x', alpha=0.3)
+                
+                # Remove top and right spines
+                ax_combined.spines['top'].set_visible(False)
+                ax_combined.spines['right'].set_visible(False)
+                
+                # Add value labels on bars
+                for bar in bars:
+                    width = bar.get_width()
+                    ax_combined.text(width + max(combined_df['Count']) * 0.01, bar.get_y() + bar.get_height()/2, 
+                                   f'{int(width)}', ha='left', va='center', fontsize=10, fontweight='bold')
+                
+                # Improve tick labels - smaller font for longer labels
+                ax_combined.tick_params(axis='y', labelsize=8)
+                ax_combined.tick_params(axis='x', labelsize=10)
+            else:
+                ax_combined.text(0.5, 0.5, 'No multi-commands', ha='center', va='center', transform=ax_combined.transAxes, fontsize=14)
+                ax_combined.set_title(f'Multi-Commands: {short_name}', fontsize=14, fontweight='bold')
+            
             # Plot step-wise action distribution
             step_actions_data = results.get("step_actions", {})
             final_step_actions = results.get("final_step_actions", Counter())
@@ -862,6 +1039,30 @@ class TrainTrajectoryAnalyzer:
             action_transitions = results.get("action_transitions", Counter())
             self._create_action_transition_plot(ax_transitions, action_transitions, short_name)
         
+        # --- NEW: fine-tune horizontal spacing between 4th (step) and 5th (transition) columns ---
+        # separate shifts allow asymmetric tweaking:
+        left_shift  = 0.040  # move Step-Actions left  (reduce gap with 3rd col)
+        right_shift = 0.030  # move Transitions  right (enlarge gap with 4th col)
+        for row_axes in axes:
+            ax_steps = row_axes[3]        # 4th column (Step Actions)
+            ax_trans = row_axes[4]        # 5th column (Action Transitions)
+
+            # Current positions
+            steps_pos = ax_steps.get_position()
+            trans_pos = ax_trans.get_position()
+
+            # Move Step Actions left, Transition plot right
+            ax_steps.set_position([steps_pos.x0 - left_shift,
+                                steps_pos.y0,
+                                steps_pos.width,
+                                steps_pos.height])
+
+            ax_trans.set_position([trans_pos.x0 + right_shift,
+                                trans_pos.y0,
+                                trans_pos.width,
+                                trans_pos.height])
+         # ------------------------------------------------------------------------------
+
         # Save plot with higher quality
         output_file = output_dir / "train_trajectory_analysis.png"
         plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor='white')
@@ -879,6 +1080,7 @@ class TrainTrajectoryAnalyzer:
             file_name = Path(file_path).name
             tools_data = results["tools"]
             commands_data = results["commands"]
+            combined_commands_data = results.get("combined_commands", Counter())
             step_actions_data = results.get("step_actions", {})
             action_transitions = results.get("action_transitions", Counter())
             final_step_actions = results.get("final_step_actions", Counter())
@@ -900,6 +1102,15 @@ class TrainTrajectoryAnalyzer:
                     print(f"\nTop 10 commands:")
                     for command, count in commands_data.most_common(10):
                         print(f"  {command:30} {count:6}")
+                
+                # Show combined commands (multi-command actions)
+                if combined_commands_data:
+                    total_combined = sum(combined_commands_data.values())
+                    print(f"\nMulti-command actions: {total_combined} total")
+                    print(f"Top 5 multi-command combinations:")
+                    for combined_action, count in combined_commands_data.most_common(5):
+                        percentage = (count / total_combined) * 100
+                        print(f"  {combined_action:40} {count:4} ({percentage:4.1f}%)")
                 
                 if step_actions_data or final_step_actions:
                     print(f"\nStep-wise action analysis:")

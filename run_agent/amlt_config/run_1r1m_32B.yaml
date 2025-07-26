@@ -31,7 +31,7 @@ jobs:
   - export PATH="$$HOME/.local/bin:$$PATH"
   - python -m pip install --upgrade pip
   - python -m pip install ipython ipdb
-  - git clone --depth 1 https://github.com/hiyouga/LLaMA-Factory.git
+  - git clone --depth 1 https://github.com/ShiZhengyan/LLaMA-Factory.git
   - cd LLaMA-Factory
   - pip install -e ".[torch,metrics]"
   - cd ..

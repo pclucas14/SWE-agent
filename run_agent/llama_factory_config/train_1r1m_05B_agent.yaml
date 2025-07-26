@@ -16,6 +16,10 @@ cutoff_len: 32768
 max_samples: 100000
 overwrite_cache: true
 preprocessing_num_workers: 16
+val_size: 0.05
+eval_steps: 1
+eval_strategy: steps
+per_device_eval_batch_size: 1
 
 ### output
 logging_steps: 10
@@ -38,4 +42,4 @@ ddp_timeout: 180000000
 
 ### wandb
 # report_to: wandb
-run_name: automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10_train_traj_qwen05B_bs1x8_lr1e-4_ep5
+run_name: test

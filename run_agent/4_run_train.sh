@@ -13,7 +13,7 @@ DATASETS=("astropy__astropy.26d14786_submit")
 MODEL="SWE-bench/SWE-agent-LM-32B"
 MODEL_SLUG=$(echo "$MODEL" | sed 's|/|--|g')
 EPOCHS=(3)
-LEARNING_RATES=(1e-7)
+LEARNING_RATES=(1e-4 1e-5 1e-6)
 CONTEXT_LENGTH=32768
 WANDB_PROJECT=msrmtl-zhengyan
 

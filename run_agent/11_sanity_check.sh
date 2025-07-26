@@ -9,9 +9,9 @@ set -euo pipefail
 #                └───────────┘└────────────────────┘
 MODEL_DIR_PREFIX="/home/zhengyanshi/project/SWE-agent" 
 MODELS=(
-  # "${MODEL_DIR_PREFIX}/amlt/pumped-grizzly/tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
-  # "${MODEL_DIR_PREFIX}/amlt/one-liger/tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
-  "${MODEL_DIR_PREFIX}/amlt/certain-sunbird/tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
+  "${MODEL_DIR_PREFIX}/amlt/handy-foxhound/lf_SWE-bench--SWE-agent-LM-32B_cl32768_lr1e-6_ep3_astropy__astropy.26d14786_submit::lf_SWE-bench--SWE-agent-LM-32B_cl32768_lr1e-6_ep3_astropy__astropy.26d14786_submit"
+  "${MODEL_DIR_PREFIX}/amlt/verified-meerkat/tt_SWE-agent-LM-32B_cl32768_lr1e-6_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr1e-6_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
+  # "${MODEL_DIR_PREFIX}/amlt/certain-sunbird/tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
 
   # "${MODEL_DIR_PREFIX}/amlt/assured-drake/tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_0::tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
   # "${MODEL_DIR_PREFIX}/amlt/normal-primate/tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_0::tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep1_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
@@ -27,7 +27,7 @@ CONFIG_FILE="swesmith_infer"
 NUM_WORKERS=32
 MAX_STEPS=75
 COST_LIMIT=0  # Set to 0 for local vLLM endpoint
-NUM_ITERATIONS=4
+NUM_ITERATIONS=1
 SWESMITH_TASK_NAME=automated_pipeline_o3_bugs30_combos50_depth2_workers32_nbugs1_patches2_perfile2_permodule10
 TRAJ_PATH=swesmith_gen_claude__claude-sonnet-4_gpt4.1_gpt-4o__t-0.00__p-1.00__c-2.00___patch_swesmith_astropy__astropy.26d14786_ps
 
@@ -107,7 +107,7 @@ for ENTRY in "${MODELS[@]}"; do
   echo "vLLM is ready!"
 
   # 4) Run the SWE-agent iterations
-  for i in $(seq 2 $NUM_ITERATIONS); do
+  for i in $(seq 1 $NUM_ITERATIONS); do
     echo "Running agent batch iteration $i/$NUM_ITERATIONS..."
     python sweagent/run/run_1r1m_batch.py \
         --config agent/${CONFIG_FILE}.yaml \
