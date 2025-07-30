@@ -10,6 +10,28 @@ tokenizer:
   merges_file: llm-weights/Qwen/Qwen2.5-Coder-32B-Instruct/merges.txt
   max_seq_len: 32768
 
+tool_call_special_tokens: [
+    "<function=",
+    "</function>",
+    "<parameter=",
+    "</parameter>",
+    "bash",
+    "submit",
+    "str_replace_editor",
+    "command",
+    "path",
+    "file_text",
+    "old_str",
+    "new_str",
+    "insert_line",
+    "view_range",
+    "view",
+    "create",
+    "str_replace",
+    "insert",
+    "undo_edit",
+]
+
 checkpointer:
   _component_: torchtune.training.FullModelHFCheckpointer
   checkpoint_dir: llm-weights/Qwen/Qwen2.5-Coder-32B-Instruct
@@ -51,6 +73,11 @@ dataset:
   train_on_input: False
   new_system_prompt: null
   packed: False  # True increases speed
+  enable_token_classification: True  # Enable token classification for agent metrics
+  train_on_tool_calls_only: False
+  train_on_reasoning_only: False
+  tool_call_start_token: "<function"
+  tool_call_end_token: "</function>"
 
 # Validation
 dataset_val:
@@ -63,6 +90,12 @@ dataset_val:
   train_on_input: False
   new_system_prompt: null
   packed: False
+  enable_token_classification: True  # Enable token classification for agent metrics
+  train_on_tool_calls_only: False
+  train_on_reasoning_only: False
+  tool_call_start_token: "<function"
+  tool_call_end_token: "</function>"
+
 batch_size_val: 1
 run_val_every_n_steps: 10
 

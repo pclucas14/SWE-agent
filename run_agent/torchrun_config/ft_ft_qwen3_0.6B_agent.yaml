@@ -55,6 +55,10 @@ dataset:
   new_system_prompt: null
   packed: False  # True increases speed
   enable_token_classification: True  # Enable token classification for agent metrics
+  train_on_tool_calls_only: False
+  train_on_reasoning_only: False
+  tool_call_start_token: "<function"
+  tool_call_end_token: "</function>"
 
 run_val_every_n_steps: 1
 dataset_val:
@@ -67,6 +71,11 @@ dataset_val:
   train_on_input: False  
   new_system_prompt: null  
   packed: False   
+  enable_token_classification: True  # Enable token classification for agent metrics
+  train_on_tool_calls_only: False
+  train_on_reasoning_only: False
+  tool_call_start_token: "<function"
+  tool_call_end_token: "</function>"
 
 seed: 42
 shuffle: True

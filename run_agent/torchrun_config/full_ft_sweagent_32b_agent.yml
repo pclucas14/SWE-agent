@@ -51,6 +51,11 @@ dataset:
   train_on_input: False
   new_system_prompt: null
   packed: False  # True increases speed
+  enable_token_classification: True  # Enable token classification for agent metrics
+  train_on_tool_calls_only: False
+  train_on_reasoning_only: False
+  tool_call_start_token: "<function"
+  tool_call_end_token: "</function>"
 
 # Validation
 dataset_val:
@@ -63,6 +68,12 @@ dataset_val:
   train_on_input: False
   new_system_prompt: null
   packed: False
+  enable_token_classification: True  # Enable token classification for agent metrics
+  train_on_tool_calls_only: False
+  train_on_reasoning_only: False
+  tool_call_start_token: "<function"
+  tool_call_end_token: "</function>"
+
 batch_size_val: 1
 run_val_every_n_steps: 20
 
@@ -101,7 +112,6 @@ log_level: INFO
 log_val_loss: True
 # Agent SFT specific configurations
 enable_detailed_metrics: True  # Enable detailed metrics tracking
-enable_token_classification: True  # Enable token classification
 entropy_k: 10  # Number of top probabilities for entropy calculation
 log_detailed_metrics_every_n_steps: 10  # Log detailed metrics every N steps
 

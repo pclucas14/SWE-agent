@@ -67,26 +67,38 @@ dataset:
   _component_: torchtune.datasets.AgentSFTDataset
   source: json
   data_files: datasets/placeholder.jsonl
-  split: train[:95%]
+  # split: train[:95%]
+  split: train
   conversation_column: messages
   conversation_style: openai
   train_on_input: False
   new_system_prompt: null
   packed: False  # True increases speed
+  enable_token_classification: True  # Enable token classification for agent metrics
+  train_on_tool_calls_only: False
+  train_on_reasoning_only: False
+  tool_call_start_token: "<function"
+  tool_call_end_token: "</function>"
 
-# Validation
-dataset_val:
-  _component_: torchtune.datasets.AgentSFTDataset
-  source: json
-  data_files: datasets/placeholder.jsonl
-  split: train[95%:]
-  conversation_column: messages
-  conversation_style: openai
-  train_on_input: False
-  new_system_prompt: null
-  packed: False
+# dataset_val:
+#   _component_: torchtune.datasets.AgentSFTDataset
+#   source: json
+#   data_files: datasets/placeholder.jsonl
+#   split: train[95%:]
+#   conversation_column: messages
+#   conversation_style: openai
+#   train_on_input: False
+#   new_system_prompt: null
+#   packed: False
+#   enable_token_classification: True  # Enable token classification for agent metrics
+#   train_on_tool_calls_only: False
+#   train_on_reasoning_only: False
+#   tool_call_start_token: "<function"
+#   tool_call_end_token: "</function>"
+
 batch_size_val: 1
 run_val_every_n_steps: 20
+
 
 # Optimizer and Scheduler
 optimizer:
