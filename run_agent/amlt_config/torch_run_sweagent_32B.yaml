@@ -20,7 +20,7 @@ jobs:
   submit_args:
     env:
       _AZUREML_SINGULARITY_JOB_UAI: $AZUREML_SINGULARITY_JOB_UAI
-  sku: G8
+  sku: G8-MI300X
   process_count_per_node: 1 # 8 # 4 GPUs. 
   command:
   - cat /opt/rocm/.info/version

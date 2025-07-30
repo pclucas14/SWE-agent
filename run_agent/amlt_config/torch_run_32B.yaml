@@ -38,16 +38,18 @@ jobs:
   - python -m pip install ipython ipdb
   - pip install wandb
   - pip install torchao
-  - pip install torchtune
-
+  - git clone --depth 1 https://github.com/ShiZhengyan/torchtune-0.6.1.git
+  - cd torchtune-0.6.1
+  - pip install -e .
+  - cd ..
   - |
     tune download Qwen/Qwen2.5-Coder-32B-Instruct \
       --output-dir llm-weights/Qwen/Qwen2.5-Coder-32B-Instruct \
       --ignore-patterns "original/consolidated.00.pth"
-  - python -c "from datasets import load_dataset; ds=load_dataset('SWE-bench/SWE-smith-trajectories', split='train'); ds.to_json('datasets/ft_xml_all.jsonl')"
+  # - python -c "from datasets import load_dataset; ds=load_dataset('SWE-bench/SWE-smith-trajectories', split='train'); ds.to_json('datasets/swe-smith-trajectories.jsonl')"
 
   - mkdir -p ckpt
   - |
-    tune run --nnodes 1 --nproc_per_node 8 full_finetune_distributed \
-      --config run_agent/torchrun_config/full_ft_qwen_32b.yml \
+    tune run --nnodes 1 --nproc_per_node 8 agent_sft_distributed \
+      --config ${CONFIG_FILE} \
       $EXTRA_ARGS output_dir=./ckpt && cp -r ./ckpt/* $$AMLT_OUTPUT_DIR
