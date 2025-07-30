@@ -1,4 +1,4 @@
-exp_name: swe-agent-32b-sft-distributed-placeholder
+exp_name: qwen2p5-coder-32b-agent-sft-distributed-placeholder
 output_dir: llm-weights/final/${exp_name}
 # Model Arguments
 model:
@@ -6,13 +6,13 @@ model:
 
 tokenizer:
   _component_: torchtune.models.qwen2_5.qwen2_5_tokenizer
-  path: llm-weights/SWE-bench/SWE-agent-LM-32B/vocab.json
-  merges_file: llm-weights/SWE-bench/SWE-agent-LM-32B/merges.txt
+  path: llm-weights/Qwen/Qwen2.5-Coder-32B-Instruct/vocab.json
+  merges_file: llm-weights/Qwen/Qwen2.5-Coder-32B-Instruct/merges.txt
   max_seq_len: 32768
 
 checkpointer:
   _component_: torchtune.training.FullModelHFCheckpointer
-  checkpoint_dir: llm-weights/SWE-bench/SWE-agent-LM-32B
+  checkpoint_dir: llm-weights/Qwen/Qwen2.5-Coder-32B-Instruct
   checkpoint_files: [
     model-00001-of-00014.safetensors,
     model-00002-of-00014.safetensors,
@@ -64,7 +64,7 @@ dataset_val:
   new_system_prompt: null
   packed: False
 batch_size_val: 1
-run_val_every_n_steps: 20
+run_val_every_n_steps: 10
 
 # Optimizer and Scheduler
 optimizer:

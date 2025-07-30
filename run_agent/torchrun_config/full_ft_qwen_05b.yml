@@ -69,6 +69,7 @@ batch_size_val: ${batch_size}
 seed: 42
 shuffle: True
 batch_size: 1
+log_level: INFO
 
 # Optimizer and Scheduler
 optimizer:
