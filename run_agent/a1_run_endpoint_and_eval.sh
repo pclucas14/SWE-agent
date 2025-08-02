@@ -7,9 +7,9 @@ set -Eeuo pipefail
 #                └───────────┘└────────────────────┘
 MODEL_DIR_PREFIX="/home/zhengyanshi/project/SWE-agent" 
 MODELS=(
-  "${MODEL_DIR_PREFIX}/amlt/one-liger/tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr5e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
-  "${MODEL_DIR_PREFIX}/amlt/certain-sunbird/tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr1e-4_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
-  "${MODEL_DIR_PREFIX}/amlt/pumped-grizzly/tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o/epoch_2::tt_SWE-agent-LM-32B_cl32768_lr1e-5_ep3_astropy__astropy.26d14786_submit_claude__claude-sonnet-4_gpt4.1_gpt-4o"
+  "${MODEL_DIR_PREFIX}/amlt/direct-mite/tt_Qwen2.5-Coder-32B-instruct_cl32768_lr1e-6_ep3_swe-smith-trajectories_special_tc_token/epoch_2::tt_Qwen2.5-Coder-32B-instruct_cl32768_lr1e-6_ep3_swe-smith-trajectories_special_tc_token"
+  "${MODEL_DIR_PREFIX}/amlt/smooth-jackal/tt_Qwen2.5-Coder-32B-instruct_cl32768_lr1e-5_ep3_swe-smith-trajectories_special_tc_token/epoch_2::tt_Qwen2.5-Coder-32B-instruct_cl32768_lr1e-5_ep3_swe-smith-trajectories_special_tc_token"
+  "${MODEL_DIR_PREFIX}/amlt/neutral-bengal/tt_Qwen2.5-Coder-32B-instruct_cl32768_lr1e-4_ep3_swe-smith-trajectories_special_tc_token/epoch_2::tt_Qwen2.5-Coder-32B-instruct_cl32768_lr1e-4_ep3_swe-smith-trajectories_special_tc_token"
   # add more here ...
 )
 ################################################################################
