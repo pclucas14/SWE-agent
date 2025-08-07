@@ -4,6 +4,7 @@ import asyncio
 import copy
 import json
 import logging
+import signal
 import time
 from pathlib import Path, PurePosixPath
 from typing import Annotated, Any, Literal
@@ -55,6 +56,11 @@ from sweagent.utils.config import _convert_paths_to_abspath, _strip_abspath_from
 from sweagent.utils.jinja_warnings import _warn_probably_wrong_jinja_syntax
 from sweagent.utils.log import get_logger
 from sweagent.utils.patch_formatter import PatchFormatter
+
+
+class StepHardTimeoutError(Exception):
+    """Raised when a step execution exceeds the hard timeout limit."""
+    pass
 
 
 class TemplateConfig(BaseModel):
@@ -1340,5 +1346,86 @@ class MaxStepAgent(DefaultAgent):
             self._chook.on_step_done(step=step_output, info=self.info)
             return step_output
 
-        # Execute the step normally
-        return super().step()
+        # Execute the step normally with hard timeout protection
+        return self._step_with_hard_timeout()
+    
+    def _step_with_hard_timeout(self) -> StepOutput:
+        """Execute a single step with hard timeout protection to prevent infinite hangs."""
+        # Calculate hard timeout: use 2x execution_timeout as failsafe, minimum 600s
+        hard_timeout = max(self.tools.config.execution_timeout * 1.5, 600)
+        
+        execution_start = time.perf_counter()
+        
+        def timeout_handler(signum, frame):
+            raise StepHardTimeoutError(f"Step execution exceeded hard timeout of {hard_timeout} seconds")
+        
+        # Set up signal-based hard timeout (only works on main thread)
+        old_handler = None
+        alarm_set = False
+        try:
+            # Try to set signal handler - this only works on the main thread
+            if hasattr(signal, 'SIGALRM'):
+                old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(hard_timeout)
+                alarm_set = True
+        except ValueError:
+            # We're not on the main thread, signal won't work
+            # We'll rely on manual timeout checks instead
+            self.logger.debug("Signal-based timeout not available (not main thread), using manual timeout checks")
+        
+        try:
+            # Manual timeout check before step execution
+            if time.perf_counter() - execution_start > hard_timeout:
+                raise StepHardTimeoutError(f"Step exceeded hard timeout before execution started")
+            
+            # Execute the actual step
+            step_output = super().step()
+            
+            # Manual timeout check after step execution
+            elapsed_time = time.perf_counter() - execution_start
+            if elapsed_time > hard_timeout:
+                raise StepHardTimeoutError(f"Step exceeded hard timeout during execution (elapsed: {elapsed_time:.1f}s)")
+            
+            return step_output
+            
+        except StepHardTimeoutError as e:
+            # Hard timeout exceeded - this is a critical failure indicating SWE-ReX timeout failure
+            elapsed_time = time.perf_counter() - execution_start
+            self.logger.critical(f"HARD TIMEOUT: {e} (actual elapsed: {elapsed_time:.1f}s)")
+            self.logger.critical("This indicates a failure in the SWE-ReX timeout mechanism")
+            
+            # Try to interrupt the session
+            try:
+                if self._env is not None:
+                    self._env.interrupt_session()
+            except Exception as interrupt_error:
+                self.logger.exception("Failed to interrupt session after hard timeout: %s", interrupt_error)
+            
+            # Use attempt_autosubmission_after_error for consistent error handling
+            error_step = StepOutput(
+                thought=f"Step execution exceeded hard timeout of {hard_timeout}s (elapsed: {elapsed_time:.1f}s)",
+                exit_status="exit_step_hard_timeout",
+                output=f"Critical error: Step hung for {elapsed_time:.1f}s, exceeded hard timeout of {hard_timeout}s. This indicates a failure in the SWE-ReX timeout mechanism.",
+                done=True,
+            )
+            step_output = self.attempt_autosubmission_after_error(error_step)
+            
+            # Follow the same pattern as parent class for proper bookkeeping
+            self.add_step_to_history(step_output)
+            
+            # Update self.info similar to max steps handling
+            self.info["submission"] = step_output.submission
+            self.info["exit_status"] = step_output.exit_status
+            self.info.update(self._get_edited_files_with_context(patch=step_output.submission or ""))
+            self.info["model_stats"] = self.model.stats.model_dump()
+            
+            self.add_step_to_trajectory(step_output)
+            
+            self._chook.on_step_done(step=step_output, info=self.info)
+            return step_output
+            
+        finally:
+            # Clean up signal handler if we set one
+            if alarm_set and old_handler is not None:
+                signal.alarm(0)  # Cancel alarm
+                signal.signal(signal.SIGALRM, old_handler)  # Restore old handler
