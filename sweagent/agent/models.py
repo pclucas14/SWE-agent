@@ -1328,5 +1328,3 @@ def get_model(args: ModelConfig, tools: ToolConfig) -> AbstractModel:
         return AzureLLMModel(args, tools)
     assert isinstance(args, GenericAPIModelConfig), f"Expected {GenericAPIModelConfig}, got {args}"
     return LiteLLMModel(args, tools)
-    assert isinstance(args, GenericAPIModelConfig), f"Expected {GenericAPIModelConfig}, got {args}"
-    return LiteLLMModel(args, tools)
