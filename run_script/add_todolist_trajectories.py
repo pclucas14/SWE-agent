@@ -531,9 +531,13 @@ def main():
     parser.add_argument("--system-msg-limit", type=int, default=2000, help="Max length for system messages (-1 for no truncation)")
     parser.add_argument("--user-msg-limit", type=int, default=1500, help="Max length for user messages (-1 for no truncation)")
     parser.add_argument("--assistant-msg-limit", type=int, default=-1, help="Max length for assistant messages (-1 for no truncation)")
-    parser.add_argument("--model", default="claude-opus-4", help="Model name to use (e.g., claude-opus-4, claude-sonnet-4)")
+    parser.add_argument("--model", default="o3-2025-04-16", help="Model name to use (e.g., claude-opus-4, o3-2025-04-16)")
 
     args = parser.parse_args()
+    
+    # Automatically append model name to output file
+    base_name, ext = os.path.splitext(args.output_file)
+    args.output_file = f"{base_name}_{args.model}{ext}"
     
     if not os.path.exists(args.input_file):
         print(f"Error: Input file {args.input_file} does not exist")
