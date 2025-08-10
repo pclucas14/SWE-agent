@@ -15,7 +15,7 @@ import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
 from threading import Lock
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, ClassVar
 
 import litellm
 import litellm.types.utils
@@ -270,10 +270,37 @@ class HumanThoughtModelConfig(HumanModelConfig):
 
 
 class CopilotClaudeModelConfig(GenericAPIModelConfig):
-    """Configuration for GitHub Copilot Claude API model"""
+    """Configuration for GitHub Copilot Claude (and related Copilot-routed) API models"""
 
-    name: Literal["claude-sonnet-4"] = Field(default="claude-sonnet-4", description="Model name.")
-    
+    # Extended supported model names
+    name: Literal[
+        "claude-sonnet-4",
+        "gpt-4.1-2025-04-14",
+        "gpt-3.5-turbo-0613",
+        "gpt-4o-mini-2024-07-18",
+        "gpt-4-0613",
+        "gpt-4-0125-preview",
+        "gpt-4o-2024-11-20",
+        "gpt-4o-2024-05-13",
+        "gpt-4o-2024-08-06",
+        "o3-mini-2025-01-31",
+        "o3-mini-paygo",
+        "gpt-4o-copilot",
+        "text-embedding-3-small",
+        "claude-3.5-sonnet",
+        "claude-3.7-sonnet",
+        "claude-3.7-sonnet-thought",
+        "claude-opus-4",
+        "claude-opus-41",
+        "gemini-2.0-flash-001",
+        "o3-2025-04-16",
+        "o4-mini-2025-04-16",
+        "gpt-4.1-mini-2025-04-14",
+        "gpt-4.1-nano-2025-04-14",
+        "oswe-vscode",
+        "gpt-4.1-oswe-control",
+    ] = Field(default="claude-sonnet-4", description="Model name.")
+
     api_base: str | None = Field(
         default="https://api.enterprise.githubcopilot.com",
         description="GitHub Copilot API base URL"
@@ -671,18 +698,12 @@ class LiteLLMModel(AbstractModel):
         self.stats.tokens_received += output_tokens
         self.stats.api_calls += 1
 
-        # Log updated cost values to std. err
+        # Log updated cost values to std. err - consolidated into one line to reduce verbosity
         self.logger.debug(
-            f"input_tokens={input_tokens:,}, "
-            f"output_tokens={output_tokens:,}, "
-            f"instance_cost={self.stats.instance_cost:.2f}, "
-            f"cost={cost:.2f}",
-        )
-        self.logger.debug(
-            f"total_tokens_sent={self.stats.tokens_sent:,}, "
-            f"total_tokens_received={self.stats.tokens_received:,}, "
-            f"total_cost={GLOBAL_STATS.total_cost:.2f}, "
-            f"total_api_calls={self.stats.api_calls:,}",
+            f"input_tokens={input_tokens:,}, output_tokens={output_tokens:,}, "
+            f"instance_cost={self.stats.instance_cost:.2f}, cost={cost:.2f}, "
+            f"total_tokens_sent={self.stats.tokens_sent:,}, total_tokens_received={self.stats.tokens_received:,}, "
+            f"total_cost={GLOBAL_STATS.total_cost:.2f}, total_api_calls={self.stats.api_calls:,}"
         )
 
         # Check whether total cost or instance cost limits have been exceeded
@@ -1053,7 +1074,42 @@ class CopilotClaudeModel(LiteLLMModel):
     Uses OpenAI client format but connects to GitHub Copilot Claude endpoints.
     """
 
-    COPILOT_CLAUDE_SUPPORTED_MODELS = ["claude-sonnet-4"]
+    # Extended supported models
+    COPILOT_CLAUDE_SUPPORTED_MODELS = [
+        "claude-sonnet-4",
+        "gpt-4.1-2025-04-14",
+        "gpt-3.5-turbo-0613",
+        "gpt-4o-mini-2024-07-18",
+        "gpt-4-0613",
+        "gpt-4-0125-preview",
+        "gpt-4o-2024-11-20",
+        "gpt-4o-2024-05-13",
+        "gpt-4o-2024-08-06",
+        "o3-mini-2025-01-31",
+        "o3-mini-paygo",
+        "gpt-4o-copilot",
+        "text-embedding-3-small",
+        "claude-3.5-sonnet",
+        "claude-3.7-sonnet",
+        "claude-3.7-sonnet-thought",
+        "claude-opus-4",
+        "claude-opus-41",
+        "gemini-2.0-flash-001",
+        "o3-2025-04-16",
+        "o4-mini-2025-04-16",
+        "gpt-4.1-mini-2025-04-14",
+        "gpt-4.1-nano-2025-04-14",
+        "oswe-vscode",
+        "gpt-4.1-oswe-control",
+    ]
+
+    # Models that should not receive temperature/top_p (reasoning / deterministic styles)
+    NOT_TEMPERATURE_MODELS = [
+        "o3-mini-2025-01-31",
+        "o3-mini-paygo",
+        "o3-2025-04-16",
+        "o4-mini-2025-04-16",
+    ]
 
     def __init__(self, args: CopilotClaudeModelConfig, tools: ToolConfig):
         if args.name not in self.COPILOT_CLAUDE_SUPPORTED_MODELS:
@@ -1197,61 +1253,63 @@ class CopilotClaudeModel(LiteLLMModel):
             msg = f"Input tokens {input_tokens} exceed max tokens {self.model_max_input_tokens}"
             raise ContextWindowExceededError(msg)
 
-        # Build request arguments for GitHub Copilot Claude API
-        request_kwargs: dict[str, Any] = dict(
-            model=self.config.name,
-            messages=messages_no_cache_control,
-            max_tokens=self.config.max_tokens,
-            temperature=self.config.temperature if temperature is None else temperature,
-        )
-        
-        if self.config.top_p is not None:
-            request_kwargs["top_p"] = self.config.top_p
-        
+        # Embedding model special handling
+        if self.config.name == "text-embedding-3-small":
+            try:
+                # Concatenate user+system+assistant contents as embedding input
+                embed_input = "\n".join(
+                    m["content"] for m in messages_no_cache_control if m["role"] in ("user", "system", "assistant")
+                )[:100_000]  # safeguard length
+                resp = self.client.embeddings.create(model=self.config.name, input=embed_input)
+                embedding = resp.data[0].embedding  # type: ignore
+                # Treat embedding length as the "message" (agent infra expects a string)
+                outputs = [{"message": f"EMBEDDING length={len(embedding)}"}]
+                # No reliable token usage from endpoint; mark output_tokens=0
+                self._update_stats(input_tokens=input_tokens, output_tokens=0, cost=0.0)
+                return outputs
+            except openai.OpenAIError:
+                raise
+
+        # Build chat request
+        request_kwargs: dict[str, Any] = {
+            "model": self.config.name,
+            "messages": messages_no_cache_control,
+            "max_tokens": self.config.max_tokens,
+        }
+        if self.config.name not in self.NOT_TEMPERATURE_MODELS:
+            request_kwargs["temperature"] = self.config.temperature if temperature is None else temperature
+            if self.config.top_p is not None:
+                request_kwargs["top_p"] = self.config.top_p
         if self.tools.use_function_calling:
             request_kwargs["tools"] = self.tools.tools
             request_kwargs["tool_choice"] = "auto"
-
-        # Call GitHub Copilot Claude API
         try:
             response = self.client.chat.completions.create(**request_kwargs)
         except openai.BadRequestError as e:
-            if e.code == "context_length_exceeded" or "is longer than the model's context length" in str(e):
+            if getattr(e, "code", None) == "context_length_exceeded" or "context length" in str(e):
                 raise ContextWindowExceededError from e
             raise
-        except openai.RateLimitError as e:
-            # Let this bubble up for retry handling
+        except openai.RateLimitError:
             raise
         except openai.OpenAIError:
             raise
-
         # Convert response to SWE-agent format
         outputs: list[dict] = []
         combined_message = ""
         combined_tool_calls = []
-        
         for choice in response.choices:
             if choice.message.content:
                 combined_message += choice.message.content
             if self.tools.use_function_calling and getattr(choice.message, "tool_calls", None):
                 combined_tool_calls.extend([tc.model_dump() for tc in choice.message.tool_calls])
-        
-        # Create single output with combined message and tool calls
         out: dict[str, Any] = {"message": combined_message}
         if combined_tool_calls:
             out["tool_calls"] = combined_tool_calls
-        outputs.append(out)
-
-        # Use server-reported token usage if available
+        outputs = [out]
         if getattr(response, "usage", None) is not None and getattr(response.usage, "completion_tokens", None) is not None:
             output_tokens = int(response.usage.completion_tokens or 0)
         else:
-            # Fallback: approximate with litellm token counter
-            output_tokens = sum(
-                litellm.utils.token_counter(text=o["message"], model=self.config.name) for o in outputs
-            )
-
-        # NOTE: GitHub Copilot Claude API pricing may vary → record zero cost for now
+            output_tokens = sum(litellm.utils.token_counter(text=o["message"], model=self.config.name) for o in outputs)
         self._update_stats(input_tokens=input_tokens, output_tokens=output_tokens, cost=0.0)
         return outputs
 
@@ -1328,3 +1386,4 @@ def get_model(args: ModelConfig, tools: ToolConfig) -> AbstractModel:
         return AzureLLMModel(args, tools)
     assert isinstance(args, GenericAPIModelConfig), f"Expected {GenericAPIModelConfig}, got {args}"
     return LiteLLMModel(args, tools)
+
