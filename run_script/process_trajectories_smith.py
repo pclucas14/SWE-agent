@@ -328,19 +328,27 @@ def count_tokens_with_template(dataset, model_name, output_dir, repo_name, max_l
     
     submit_dataset = valid_dataset.select(submit_indices)
     
+    # Create combined dataset: samples that are both within token limit AND end with submit
+    combined_indices = [i for i in range(len(valid_dataset)) 
+                       if i in range(len(token_counts)) and token_counts[i] <= max_length and i in submit_indices]
+    combined_dataset = valid_dataset.select(combined_indices)
+    
     # Save JSON files
     full_json_path = os.path.join(output_dir, f"{repo_name}_full.json")
     truncated_json_path = os.path.join(output_dir, f"{repo_name}_ml{max_length}.json")
     submit_json_path = os.path.join(output_dir, f"{repo_name}_submit.json")
+    combined_json_path = os.path.join(output_dir, f"{repo_name}_submit_ml{max_length}.json")
     
     print(f"\nSaving datasets:")
     print(f"Full dataset ({len(valid_dataset)} samples) -> {full_json_path}")
     print(f"Truncated dataset ({len(truncated_dataset)} samples) -> {truncated_json_path}")
     print(f"Submit-filtered dataset ({len(submit_dataset)} samples) -> {submit_json_path}")
+    print(f"Combined submit+truncated dataset ({len(combined_dataset)} samples) -> {combined_json_path}")
     
     valid_dataset.to_json(full_json_path)
     truncated_dataset.to_json(truncated_json_path)
     submit_dataset.to_json(submit_json_path)
+    combined_dataset.to_json(combined_json_path)
     
     # Statistical analysis
     token_counts = np.array(token_counts)
@@ -414,9 +422,11 @@ def count_tokens_with_template(dataset, model_name, output_dir, repo_name, max_l
         'valid_samples': len(valid_dataset),
         'truncated_samples': len(truncated_dataset),
         'submit_samples': len(submit_dataset),
+        'combined_samples': len(combined_dataset),
         'full_dataset_path': full_json_path,
         'truncated_dataset_path': truncated_json_path,
-        'submit_dataset_path': submit_json_path
+        'submit_dataset_path': submit_json_path,
+        'combined_dataset_path': combined_json_path
     }
     
     with open(stats_file, 'w') as f:
@@ -548,6 +558,7 @@ Example:
             print(f"Full dataset saved to: {token_stats['full_dataset_path']}")
             print(f"Truncated dataset saved to: {token_stats['truncated_dataset_path']}")
             print(f"Submit-filtered dataset saved to: {token_stats['submit_dataset_path']}")
+            print(f"Combined submit+truncated dataset saved to: {token_stats['combined_dataset_path']}")
         else:
             print("Token analysis failed!")
 
