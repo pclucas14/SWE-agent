@@ -311,7 +311,7 @@ class CopilotClaudeModelConfig(GenericAPIModelConfig):
     )
     
     vscode_copilot_dir: str | None = Field(
-        default="~/repo/vscode-copilot",
+        default=None,
         description="Path to vscode-copilot directory. If not provided, will use VSCODE_COPILOT_DIR env var or ~/vscode-copilot"
     )
     
@@ -1183,7 +1183,7 @@ class CopilotClaudeModel(LiteLLMModel):
                 self.config.vscode_copilot_dir or 
                 os.environ.get("VSCODE_COPILOT_DIR", os.path.expanduser("~/repo/vscode-copilot"))
             )
-            
+
             env_file_path = os.path.expanduser(os.path.join(vscode_copilot_dir, ".env"))
 
             # Try loading .env file if HMAC_SECRET not already set
@@ -1354,6 +1354,7 @@ class CopilotClaudeModel(LiteLLMModel):
 def get_model(args: ModelConfig, tools: ToolConfig) -> AbstractModel:
     """Returns correct model object given arguments and commands"""
     # Convert GenericAPIModelConfig to specific model config if needed
+    
     if isinstance(args, GenericAPIModelConfig) and not isinstance(
         args, HumanModelConfig | HumanThoughtModelConfig | ReplayModelConfig | InstantEmptySubmitModelConfig | CopilotClaudeModelConfig
     ):
