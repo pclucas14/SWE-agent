@@ -47,6 +47,7 @@ from sweagent.run.common import AutoCorrectSuggestion as ACS
 from sweagent.run.common import BasicCLI, ConfigHelper, save_predictions
 from sweagent.run.hooks.abstract import CombinedRunHooks, RunHook
 from sweagent.run.hooks.apply_patch import SaveApplyPatchHook
+from sweagent.run.hooks.copy_hook import CopyContainerArtifactsHook 
 from sweagent.run.hooks.open_pr import OpenPRConfig, OpenPRHook
 from sweagent.utils.config import load_environment_variables
 from sweagent.utils.log import add_file_handler, get_logger
@@ -179,6 +180,8 @@ class RunSingle:
         if config.actions.open_pr:
             self.logger.debug("Adding OpenPRHook")
             self.add_hook(OpenPRHook(config.actions.pr_config))
+        
+        self.add_hook(CopyContainerArtifactsHook())
         return self
 
     def add_hook(self, hook: RunHook) -> None:
