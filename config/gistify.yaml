@@ -2,7 +2,8 @@
 # This template is heavily inspired by anthropic's computer use demo, but you can use
 # it with any LM.
 agent:
-  type: default          # <-- new ─ tells Pydantic which variant to use
+  type: max_step # default          # <-- new ─ tells Pydantic which variant to use
+  max_steps: 50
   model: {}
   templates:
     system_template: |-
@@ -28,7 +29,7 @@ agent:
       4. **Preserve existing code lines** — do not modify lines of code unless you're removing them.
       Avoid rewriting or reformatting. However, you can reformat when it requires modification such as if-else statement due to removal of certain lines.
       5. **Ensure it is executable** — the generated file should run **without errors** as a standalone script.
-      6. **Do not modify the original file.** Only output the new file, called `concise.py`
+      6. **Do not modify the original file.** Only output the new file, called `concise.py`. The file should be saved in `{{working_dir}}`, the working directory.
 
       Your thinking should be thorough and so it's fine if it's very long.
     next_step_template: |-

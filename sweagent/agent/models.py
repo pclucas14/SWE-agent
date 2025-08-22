@@ -909,11 +909,12 @@ class AzureLLMModel(LiteLLMModel):
     """
 
     # All deployments that are available via the public TRAPI endpoint
-    AZURE_SUPPORTED_MODELS = ["gpt-4o", "o3", "o3-mini", "o4-mini", "gpt-4.1", "gpt-4.5-preview", "o1", "gpt-4.1-mini"]
+    # AZURE_SUPPORTED_MODELS = ["gpt-4o", "o3", "o3-mini", "o4-mini", "gpt-4.1", "gpt-4.5-preview", "o1", "gpt-4.1-mini"]
+    AZURE_SUPPORTED_MODELS = ["o3", "o3-mini", "o4-mini", "gpt-4.1", "gpt-4.5-preview", "o1", "gpt-4.1-mini", "trapi-gpt-5", "trapi-gpt-5-mini", "trapi-gpt-5-nano"]
 
     _MODEL_META: dict[str, tuple[str, str, str]] = {
         #  name      -> (version,               instance,       api_version)
-        "gpt-4o":  ("2024-05-13", "gcr/preview", "2024-10-21"),
+        # "gpt-4o":  ("2024-05-13", "gcr/preview", "2024-10-21"),
         "o3":      ("2025-04-16", "msrne/shared", "2025-04-01-preview"),
         "o3-mini": ("2025-01-31", "msrne/shared", "2025-04-01-preview"),
         "o4-mini": ("2025-04-16", "msrne/shared", "2025-04-01-preview"),
@@ -921,10 +922,14 @@ class AzureLLMModel(LiteLLMModel):
         "gpt-4.5-preview": ("2025-02-27", "msrne/shared", "2025-04-01-preview"),
         "o1": ("2024-12-17", "msrne/shared", "2025-04-01-preview"),
         "gpt-4.1-mini": ("2025-04-14", "msrne/shared", "2025-04-01-preview"),
+        "trapi-gpt-5": ("2025-08-07", "gcr/shared", "2024-12-01-preview"),
+        "trapi-gpt-5-mini": ("2025-08-07", "gcr/shared", "2024-12-01-preview"),
+        "trapi-gpt-5-nano": ("2025-08-07", "gcr/shared", "2024-12-01-preview")
+
     }
 
     # Models that don't support custom temperature or top_p
-    NOT_TEMPERATURE_MODELS = ["o1", "o3", "o3-mini", "o4-mini"]
+    NOT_TEMPERATURE_MODELS = ["o1", "o3", "o3-mini", "o4-mini", "trapi-gpt-5", "trapi-gpt-5-mini", "trapi-gpt-5-nano"]
 
     def __init__(self, args: GenericAPIModelConfig, tools: ToolConfig):
         if args.name not in self.AZURE_SUPPORTED_MODELS:
@@ -933,7 +938,7 @@ class AzureLLMModel(LiteLLMModel):
         super().__init__(args, tools)
 
         version, instance, self._api_version = self._MODEL_META[self.config.name]
-        self._deployment_name = re.sub(r"[^a-zA-Z0-9._-]", "", f"{self.config.name}_{version}")
+        self._deployment_name = re.sub(r"[^a-zA-Z0-9._-]", "", f"{self.config.name.replace('trapi-', '')}_{version}")
         self._endpoint = f"https://trapi.research.microsoft.com/{instance}"
 
         self._credential = get_bearer_token_provider(
