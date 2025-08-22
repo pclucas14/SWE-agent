@@ -77,6 +77,9 @@ class CopyContainerArtifactsHook(RunHook):
             selected = self._apply_filters(candidates, base=workdir)
 
             if not selected:
+                breakpoint()
+
+            if not selected:
                 self.logger.info("No artifacts to copy (after filtering)")
                 return
 
