@@ -1,0 +1,191 @@
+{
+  "tests/test_hooks.py::test_hooks[hook-ata]": 
+  [
+    {
+      "event": "function_call",
+      "location": "tests/test_hooks.py:1",
+      "parent_location": "/Users/hyunji/miniconda3/envs/tracing/lib/python3.10/site-packages/_pytest/assertion/rewrite.py:186",
+      "parent_call": "exec(co, module.__dict__)",
+      "name": "<module>",
+      "arguments": {},
+      "depth": 0,
+      "is_external": false,
+      "call_type": "import",
+      "args": {},
+      "kwargs": {}
+    },
+    {
+      "event": "function_call",
+      "location": "<frozen importlib._bootstrap>:1053",
+      "parent_location": "tests/test_hooks.py:3",
+      "parent_call": "from requests import hooks",
+      "name": "_handle_fromlist",
+      "arguments": {
+        "module": "module object",
+        "fromlist": [
+          "hooks"
+        ],
+        "import_": "<built-in function __import__>",
+        "recursive": false
+      },
+      "depth": 1,
+      "is_external": true,
+      "call_type": "import",
+      "args": {},
+      "kwargs": {
+        "module": "module object",
+        "fromlist": [
+          "hooks"
+        ],
+        "import_": "<built-in function __import__>",
+        "recursive": false
+      }
+    },
+    {
+      "event": "function_call",
+      "location": "/Users/hyunji/miniconda3/envs/tracing/lib/python3.10/site-packages/_pytest/mark/structures.py:391",
+      "parent_location": "tests/test_hooks.py:10",
+      "parent_call": "@pytest.mark.parametrize( \"hooks_list, result\", ( (hook, \"ata\"),",
+      "name": "__call__",
+      "arguments": {
+        "self": "MarkDecorator(mark=Mark(name='parametrize', args=(), kwargs={}))",
+        "*args": [
+          "hooks_list, result",
+          [
+            [
+              "<function hook at 0x102d027a0>",
+              "ata"
+            ],
+            [
+              [
+                "<function hook at 0x102d027a0>",
+                "<function <lambda> at 0x102d028c0>",
+                "<function hook at 0x102d027a0>"
+              ],
+              "ta"
+            ]
+          ]
+        ],
+        "**kwargs": {}
+      },
+      "depth": 1,
+      "is_external": true,
+      "call_type": "callable_object",
+      "args": {},
+      "kwargs": {
+        "self": "MarkDecorator(mark=Mark(name='parametrize', args=(), kwargs={}))",
+        "*args": [
+          "hooks_list, result",
+          [
+            [
+              "<function hook at 0x102d027a0>",
+              "ata"
+            ],
+            [
+              [
+                "<function hook at 0x102d027a0>",
+                "<function <lambda> at 0x102d028c0>",
+                "<function hook at 0x102d027a0>"
+              ],
+              "ta"
+            ]
+          ]
+        ],
+        "**kwargs": {}
+      },
+      "number_of_calls": 1
+    },
+    {
+      "event": "function_call",
+      "location": "/Users/hyunji/miniconda3/envs/tracing/lib/python3.10/site-packages/_pytest/mark/structures.py:391",
+      "parent_location": "tests/test_hooks.py:17",
+      "parent_call": "def test_hooks(hooks_list, result):",
+      "name": "__call__",
+      "arguments": {
+        "self": "MarkDecorator object",
+        "*args": [
+          "<function test_hooks at 0x102d02950>"
+        ],
+        "**kwargs": {}
+      },
+      "depth": 1,
+      "is_external": true,
+      "call_type": "callable_object",
+      "args": {},
+      "kwargs": {
+        "self": "MarkDecorator object",
+        "*args": [
+          "<function test_hooks at 0x102d02950>"
+        ],
+        "**kwargs": {}
+      },
+      "number_of_calls": 2
+    },
+    {
+      "event": "function_call",
+      "location": "tests/test_hooks.py:10",
+      "parent_location": "/Users/hyunji/miniconda3/envs/tracing/lib/python3.10/site-packages/_pytest/python.py:157",
+      "parent_call": "result = testfunction(**testargs)",
+      "name": "test_hooks",
+      "arguments": {
+        "hooks_list": "<function hook at 0x102d027a0>",
+        "result": "ata"
+      },
+      "depth": 0,
+      "is_external": false,
+      "call_type": "function_call",
+      "args": {},
+      "kwargs": {
+        "hooks_list": "<function hook at 0x102d027a0>",
+        "result": "ata"
+      },
+      "number_of_calls": 1
+    },
+    {
+      "event": "function_call",
+      "location": "src/requests/hooks.py:22",
+      "parent_location": "tests/test_hooks.py:18",
+      "parent_call": "assert hooks.dispatch_hook(\"response\", {\"response\": hooks_list}, \"Data\") == result",
+      "name": "dispatch_hook",
+      "arguments": {
+        "key": "response",
+        "hooks": {
+          "response": "<function hook at 0x102d027a0>"
+        },
+        "hook_data": "Data",
+        "**kwargs": {}
+      },
+      "depth": 1,
+      "is_external": false,
+      "call_type": "function_call",
+      "args": {},
+      "kwargs": {
+        "key": "response",
+        "hooks": {
+          "response": "<function hook at 0x102d027a0>"
+        },
+        "hook_data": "Data",
+        "**kwargs": {}
+      },
+      "number_of_calls": 1
+    },
+    {
+      "event": "function_call",
+      "location": "tests/test_hooks.py:6",
+      "parent_location": "src/requests/hooks.py:30",
+      "parent_call": "_hook_data = hook(hook_data, **kwargs)",
+      "name": "hook",
+      "arguments": {
+        "value": "Data"
+      },
+      "depth": 2,
+      "is_external": false,
+      "call_type": "function_call",
+      "args": {},
+      "kwargs": {
+        "value": "Data"
+      },
+      "number_of_calls": 1
+    }
+  ]
+}
