@@ -21,12 +21,15 @@ import litellm
 import litellm.types.utils
 from openai import AzureOpenAI, OpenAI, NOT_GIVEN
 import openai  # ← NEW: for exception classes
-from azure.identity import (
-    ChainedTokenCredential,
-    AzureCliCredential,
-    DefaultAzureCredential,
-    get_bearer_token_provider,
-)
+try:
+    from azure.identity import (
+        ChainedTokenCredential,
+        AzureCliCredential,
+        DefaultAzureCredential,
+        get_bearer_token_provider,
+    )
+except:
+    pass
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import ConfigDict, Field, SecretStr
 from swerex.exceptions import SwerexException
@@ -764,7 +767,7 @@ class LiteLLMModel(AbstractModel):
             response: litellm.types.utils.ModelResponse = litellm.completion(  # type: ignore
                 model=self.config.name,
                 messages=messages,
-                temperature=self.config.temperature if temperature is None else temperature,
+                temperature=1, #self.config.temperature if temperature is None else temperature,
                 top_p=self.config.top_p,
                 api_version=self.config.api_version,
                 api_key=self.config.choose_api_key(),

@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+import os
+import sys
+import subprocess
+
+# from sweagent.tools.repograph import retrieve_graph
+
+repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, repo_dir)
+
+import retrieve_graph 
+
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: search_repo <repo_name> <search_term>")
+        sys.exit(1)
+
+    repo_name = sys.argv[1]
+    search_term = sys.argv[2]
+    retrieve_graph.run(repo_name, search_term)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,13 @@
+tools:
+  search_repo:
+    signature: "search_repo <repo_name> <search_term>"
+    docstring: "searches in the mentioned repository with a specific function or class, and returns the def and ref relations for the search term."
+    arguments:
+      - name: repo_name 
+        type: string
+        description: "name of the repository to run the pytest"
+        required: true
+      - name: search_term
+        type: string
+        description: "function or class to look for in the repository."
+        required: true

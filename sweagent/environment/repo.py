@@ -95,6 +95,9 @@ class LocalRepoConfig(BaseModel):
     def check_valid_repo(self) -> Self:
         try:
             repo = GitRepo(self.path, search_parent_directories=True)
+            if repo.is_dirty():
+                import subprocess
+                subprocess.run(["git", "stash", "push", "-u", "-m", "Temp stash"], cwd=self.path)
         except InvalidGitRepositoryError as e:
             msg = f"Could not find git repository at {self.path=}."
             raise ValueError(msg) from e

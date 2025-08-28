@@ -1,0 +1,13 @@
+tools:
+  trace_info:
+    signature: "trace_info <repo_name> <pytest_test_name>"
+    docstring: "returns the trace log when running specific pytest"
+    arguments:
+      - name: repo_name 
+        type: string
+        description: "name of the repository to run the pytest"
+        required: true
+      - name: pytest_test_name 
+        type: string
+        description: "name of the pytest to get the trace log"
+        required: true

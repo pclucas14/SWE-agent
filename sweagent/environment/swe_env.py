@@ -32,7 +32,7 @@ class EnvironmentConfig(BaseModel):
         default=None,
         description="Repository options.",
     )
-    post_startup_commands: list[str] = []
+    post_startup_commands: list[str] = [] 
     """Execute these commands before starting to run the agent but after all other setup steps.
     They will be executed in the same shell as the agent.
     Note: Every command is passed as a string, not a list of arguments.
