@@ -1,0 +1,102 @@
+# Formerly called: anthropic_filemap.yaml
+# This template is heavily inspired by anthropic's computer use demo, but you can use
+# it with any LM.
+agent:
+  type: max_step # default          # <-- new ─ tells Pydantic which variant to use
+  max_steps: 50
+  model: {}
+  templates:
+    system_template: |-
+      You are a helpful assistant that can interact with a computer to solve tasks. Your job is to create a single file named `concise.py` in {{working_dir}} that is **self-contained**, **minimal**, and **executable**, and when used in place of the original test run, reproduces the same runtime behavior and outputs. Do NOT import internal modules (modules defined in {{working_dir}}); instead, inline their code directly in `concise.py`. External modules may be imported normally to keep the file executable. Do *not* execute, run, or simulate the code in any way (e.g., with pytest, the python command, or otherwise). 
+    instance_template: |-
+      <uploaded_files>
+      {{working_dir}}
+      </uploaded_files>
+      I've uploaded a python code repository in the directory {{working_dir}}.
+
+      There is an original test invocation (the command that reproduces behavior we want to preserve):
+          {{problem_statement}}
+      Your job: create a single file named `concise.py` saved at {{working_dir}} that is **self-contained**, **minimal**, and **executable**, and when used in place of the original test run reproduces the same runtime behavior and outputs. Follow the below instructions when creating the file.
+
+      OUTPUT
+      - Produce one file only: `{{working_dir}}/concise.py`.
+      - The assistant must return only the contents of `concise.py` (no extra files, no analysis, no commentary).
+
+      HIGH-LEVEL RULES for creating `concise.py`
+      1. Inline internal dependencies
+        * Copy into `concise.py` every function, class, or top-level code from the files inside {{working_dir}} that is executed when running {{problem_statement}}.
+        * Do not use `import` statements for modules defined in {{working_dir}}.
+      2. Remove unexecuted lines
+        * When copying lines in `concise.py`, keep only the lines that is actually executed when running {{problem_statement}}.
+        * Delete unused functions, classes, variables, if-else, imports, and unreachable branches.
+        * Ensure the file remains syntactically correct and minimal after removal.
+      3. Preserve original source lines
+        * Do not rewrite or reformat lines unless necessary to keep the files valid.
+        * Do not arbitrary generate new lines that do not exist in the original {{working_dir}} files.
+        * You may adjust indentation, remove empty `else` blocks, or adapt `try-except` structures only when required to preserve correctness.
+      4. Keep external imports
+        * Leave imports to external libraries, frameworks, or standard language/runtime libraries unchanged.
+        * Only remove or inline dependencies that come from {{working_dir}}.
+      5. No shortcuts or cheating 
+        * Do not stub, fake, or monkey-patch external modules.
+        * Do not reimplement or newly add third-party libraries.
+        * Do not hard-code outputs 
+        * Do not replace test logic with simplified equivalents 
+      6. Preserve test behavior
+        * The test function much remain unchanged, except for import adjustments needed to reference inlined code.
+        * The output, exceptions, or exit codes much martch the original run of {{problem_statement}}.
+      7. Do not execute the code
+        * Do not run or simulate the program (e.g., with `pytest`, `python`, or any other tools) 
+
+      How to Operate:
+      1. Examine the test file and the test function used for {{problem_statement}}
+      2. Identify which module used by these functions are defined in {{working_dir}}
+      3. Copy and inline the code from those modules into `concise.py`
+      4. Check these modules for any internal functions or classes and inline them as needed.
+      5. Repeat this process recursively until all internal dependencies are inlined. 
+      6. Do not forget to copy and paste external imports.
+
+      Your thinking should be thorough and so it's fine if it's very long.
+    next_step_template: |-
+      OBSERVATION:
+      {{observation}}
+    next_step_no_output_template: |-
+      Your command ran successfully and did not produce any output.
+  tools:
+    env_variables:
+      PAGER: cat
+      MANPAGER: cat
+      LESS: -R
+      PIP_PROGRESS_BAR: 'off'
+      TQDM_DISABLE: '1'
+      GIT_PAGER: cat
+    bundles:
+      - path: tools/registry
+      - path: tools/edit_anthropic
+      - path: tools/review_on_submit_m
+    registry_variables:
+      USE_FILEMAP: 'true'
+      SUBMIT_REVIEW_MESSAGES:
+        - |
+          Thank you for your work on this issue. Please carefully follow the steps below to help review your changes.
+
+          1. If you made any changes to your code after running the reproduction script, please run the reproduction script again.
+            If the reproduction script is failing, please revisit your changes and make sure they are correct.
+            If you have already removed your reproduction script, please ignore this step.
+          2. Remove your reproduction script (if you haven't done so already).
+          3. If you have modified any TEST files, please revert them to the state they had before you started fixing the issue.
+            You can do this with `git checkout -- /path/to/test/file.py`. Use below <diff> to find the files you need to revert.
+          4. Run the submit command again to confirm.
+
+          Here is a list of all of your changes:
+
+          <diff>
+          {{diff}}
+          </diff>
+    enable_bash_tool: false 
+    parse_function:
+      type: function_calling
+  history_processors:
+    - type: cache_control
+      last_n_messages: 2
+# instances: {}
