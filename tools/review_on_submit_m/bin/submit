@@ -2,7 +2,7 @@
 
 import argparse
 from pathlib import Path
-import subprocess
+import subproce ss
 import sys
 import os
 import io
@@ -19,6 +19,9 @@ def main() -> None:
     assert repo_root
 
     patch_path = Path("/root/model.patch")
+
+    if not os.path.exists(patch_path):
+        patch_path = Path(os.path.join(repo_root, "model.patch"))
 
     subprocess.run(
         f"git add -A && git diff --cached > {patch_path}",
