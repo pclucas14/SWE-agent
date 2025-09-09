@@ -2,7 +2,7 @@
 
 import argparse
 from pathlib import Path
-import subproce ss
+import subprocess
 import sys
 import os
 import io
@@ -12,7 +12,9 @@ from registry import registry
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Submit changes for review")
-    parser.add_argument("-f", "--force", action="store_true", help="Force submit without review")
+    parser.add_argument(
+        "-f", "--force", action="store_true", help="Force submit without review"
+    )
     args = parser.parse_args()
 
     repo_root = registry.get("ROOT", os.getenv("ROOT"))
@@ -39,7 +41,9 @@ def main() -> None:
     if not args.force and current_stage != n_stages:
         message = submit_review_messages[current_stage]
         message = message.replace("{{diff}}", patch)
-        message = message.replace("{{problem_statement}}", registry.get("PROBLEM_STATEMENT", ""))
+        message = message.replace(
+            "{{problem_statement}}", registry.get("PROBLEM_STATEMENT", "")
+        )
         registry["SUBMIT_STAGE"] = current_stage + 1
         print(message)
         sys.exit(0)
