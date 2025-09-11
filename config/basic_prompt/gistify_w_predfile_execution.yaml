@@ -1,8 +1,6 @@
 # Formerly called: anthropic_filemap.yaml
 # This template is heavily inspired by anthropic's computer use demo, but you can use
 # it with any LM.
-env:
-  post_startup_commands: ["pip install pytest"]
 # Formerly called: anthropic_filemap.yaml
 # This template is heavily inspired by anthropic's computer use demo, but you can use
 # it with any LM.
