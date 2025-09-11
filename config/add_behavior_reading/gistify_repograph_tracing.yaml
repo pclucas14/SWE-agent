@@ -71,41 +71,41 @@ agent:
       docstring: searches in the requested ('repo_name') repository with a specific function or class ('search_term'), and returns the def and ref relations for the search term.
       signature: search_repo <repo_name> <search_term>
       arguments:
-        - name: repo_name  
+        - name: repo_name
           type: string
-          description: name of the repository to run the pytest. 
+          description: name of the repository to run the pytest.
           required: true
-        - name: search_term 
+        - name: search_term
           type: string
-          description: function or class to look for in the repository. 
+          description: function or class to look for in the repository.
           required: true
     trace_info:
       docstring: returns the trace log when running specific pytest ('pytest_test_name') in the requested ('repo_name') repository
       signature: trace_info <repo_name> <pytest_test_name>
       arguments:
-        - name: repo_name  
+        - name: repo_name
           type: string
-          description: name of the repository to run the pytest. 
+          description: name of the repository to run the pytest.
           required: true
-        - name: pytest_test_name 
+        - name: pytest_test_name
           type: string
-          description: name of the pytest to get the trace log. 
+          description: name of the pytest to get the trace log.
           required: true
     env_variables:
       PAGER: cat
       MANPAGER: cat
       LESS: -R
-      PIP_PROGRESS_BAR: 'off'
-      TQDM_DISABLE: '1'
+      PIP_PROGRESS_BAR: "off"
+      TQDM_DISABLE: "1"
       GIT_PAGER: cat
     bundles:
       - path: tools/registry
       - path: tools/edit_anthropic
-      - path: tools/review_on_submit_m
+      - path: tools/gistify_submit
       - path: tools/repograph
       - path: tools/tracing
     registry_variables:
-      USE_FILEMAP: 'true'
+      USE_FILEMAP: "true"
       SUBMIT_REVIEW_MESSAGES:
         - |
           Thank you for your work on this issue. Please carefully follow the steps below to help review your changes.
@@ -123,7 +123,7 @@ agent:
           <diff>
           {{diff}}
           </diff>
-    enable_bash_tool: false 
+    enable_bash_tool: false
     parse_function:
       type: function_calling
   history_processors:

@@ -9,7 +9,7 @@ agent:
   model: {}
   templates:
     system_template: |-
-      You are a helpful assistant that can interact with a computer to solve tasks. Your job is to create a single file named `concise.py` in {{working_dir}} that is **self-contained**, **minimal**, and **executable**, and when used in place of the original test run, reproduces the same runtime behavior and outputs. Do NOT import internal modules (modules defined in {{working_dir}}); instead, inline their code directly in `concise.py`. External modules may be imported normally to keep the file executable.  
+      You are a helpful assistant that can interact with a computer to solve tasks. Your job is to create a single file named `concise.py` in {{working_dir}} that is **self-contained**, **minimal**, and **executable**, and when used in place of the original test run, reproduces the same runtime behavior and outputs. Do NOT import internal modules (modules defined in {{working_dir}}); instead, inline their code directly in `concise.py`. External modules may be imported normally to keep the file executable.
     instance_template: |-
       <uploaded_files>
       {{working_dir}}
@@ -64,15 +64,15 @@ agent:
       PAGER: cat
       MANPAGER: cat
       LESS: -R
-      PIP_PROGRESS_BAR: 'off'
-      TQDM_DISABLE: '1'
+      PIP_PROGRESS_BAR: "off"
+      TQDM_DISABLE: "1"
       GIT_PAGER: cat
     bundles:
       - path: tools/registry
       - path: tools/new_edit_anthropic
-      - path: tools/review_on_submit_m
+      - path: tools/gistify_submit
     registry_variables:
-      USE_FILEMAP: 'true'
+      USE_FILEMAP: "true"
       SUBMIT_REVIEW_MESSAGES:
         - |
           Thank you for your work on this issue. Please carefully follow the steps below to help review your changes.
@@ -90,7 +90,7 @@ agent:
           <diff>
           {{diff}}
           </diff>
-    enable_bash_tool: true 
+    enable_bash_tool: true
     parse_function:
       type: function_calling
   history_processors:

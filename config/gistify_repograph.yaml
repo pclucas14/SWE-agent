@@ -16,7 +16,7 @@ agent:
       </uploaded_files>
       I've uploaded a python code repository in the directory {{working_dir}}. 
       Your task is to create a **self-contained, minimal, and executable** version of the original test file when running command:\n"
-      
+
       `{{problem_statement}}`
 
       This new file should:
@@ -27,7 +27,7 @@ agent:
         * Any code (functions, variables, imports, etc.) that is **not executed** during the test run
         * Any `import` that is **unused** or only used by removed code
         * Unused `try-except` or `if-else` branches
-      
+
       4. **Preserve existing code lines** — do not modify lines of code unless you're removing them.
       Avoid rewriting or reformatting. However, you can reformat when it requires modification such as if-else statement due to removal of certain lines.
       5. **Ensure it is executable** — the generated file should run **without errors** as a standalone script.
@@ -46,28 +46,28 @@ agent:
       docstring: searches in the requested ('repo_name') repository with a specific function or class ('search_term'), and returns the def and ref relations for the search term.
       signature: search_repo <repo_name> <search_term>
       arguments:
-        - name: repo_name  
+        - name: repo_name
           type: string
-          description: name of the repository to run the pytest. 
+          description: name of the repository to run the pytest.
           required: true
-        - name: search_term 
+        - name: search_term
           type: string
-          description: function or class to look for in the repository. 
+          description: function or class to look for in the repository.
           required: true
     env_variables:
       PAGER: cat
       MANPAGER: cat
       LESS: -R
-      PIP_PROGRESS_BAR: 'off'
-      TQDM_DISABLE: '1'
+      PIP_PROGRESS_BAR: "off"
+      TQDM_DISABLE: "1"
       GIT_PAGER: cat
     bundles:
       - path: tools/registry
       - path: tools/edit_anthropic
-      - path: tools/review_on_submit_m
+      - path: tools/gistify_submit
       - path: tools/repograph
     registry_variables:
-      USE_FILEMAP: 'true'
+      USE_FILEMAP: "true"
       SUBMIT_REVIEW_MESSAGES:
         - |
           Thank you for your work on this issue. Please carefully follow the steps below to help review your changes.
