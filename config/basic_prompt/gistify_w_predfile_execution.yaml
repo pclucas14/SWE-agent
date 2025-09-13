@@ -46,8 +46,8 @@ agent:
         * Do not hard-code outputs 
         * Do not replace test logic with simplified equivalents 
       6. Preserve test behavior
-        * The test function much remain unchanged, except for import adjustments needed to reference inlined code.
-        * The output, exceptions, or exit codes much martch the original run of {{problem_statement}}.
+        * The test function must remain unchanged, except for import adjustments needed to reference inlined code.
+        * The output, exceptions, or exit codes must match the original run of {{problem_statement}}.
 
       Your thinking should be thorough and so it's fine if it's very long.
     next_step_template: |-

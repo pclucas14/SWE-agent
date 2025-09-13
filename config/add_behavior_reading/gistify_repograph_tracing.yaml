@@ -45,8 +45,8 @@ agent:
         * Do not hard-code outputs 
         * Do not replace test logic with simplified equivalents 
       6. Preserve test behavior
-        * The test function much remain unchanged, except for import adjustments needed to reference inlined code.
-        * The output, exceptions, or exit codes much martch the original run of {{problem_statement}}.
+        * The test function must remain unchanged, except for import adjustments needed to reference inlined code.
+        * The output, exceptions, or exit codes must match the original run of {{problem_statement}}.
       7. Do not execute the code
         * Do not run or simulate the program (e.g., with `pytest`, `python`, or any other tools) 
       8. Use the *search_repo* tool to retrieve global relationships for a specific function or class in the repository and use the *trace_info* tool to retrieve global tracing information while executing {{problem_statement}}. 
