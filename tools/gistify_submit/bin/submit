@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+
+import argparse
+import sys
+import os
+import io
+
+from registry import registry
+
+
+def file_to_path(path_to_file, output_patch_path):
+    # given a python file, generates a git patch such that applying it creates this new file
+    # then, the patch is saved to output_patch_path
+    repo_root = registry.get("ROOT", os.getenv("ROOT"))
+    if not repo_root:
+        # Fallback to current working directory if ROOT is unset
+        repo_root = os.getcwd()
+
+    # Resolve absolute paths
+    path_to_file = os.path.abspath(path_to_file)
+    repo_root = os.path.abspath(repo_root)
+
+    # Compute relative path within the repo and force POSIX separators
+    rel_path = os.path.relpath(path_to_file, start=repo_root)
+    rel_path_posix = rel_path.replace(os.sep, "/")
+
+    # Read file content (prefer utf-8, fall back to latin-1 to preserve bytes)
+    raw = None
+    with open(path_to_file, "rb") as f:
+        raw = f.read()
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1")
+
+    # Ensure a trailing newline so hunk line counts are stable
+    if not text.endswith("\n"):
+        text += "\n"
+
+    lines = text.splitlines(keepends=True)
+    n = len(lines)
+
+    # Build a minimal unified diff that git apply understands
+    patch_lines = []
+    patch_lines.append(f"diff --git a/{rel_path_posix} b/{rel_path_posix}\n")
+    patch_lines.append("new file mode 100644\n")
+    patch_lines.append("--- /dev/null\n")
+    patch_lines.append(f"+++ b/{rel_path_posix}\n")
+    patch_lines.append(f"@@ -0,0 +1,{n} @@\n")
+    for line in lines:
+        # Prefix each added line with '+'
+        patch_lines.append(f"+{line}")
+
+    # Ensure the output directory exists
+    out_dir = os.path.dirname(os.path.abspath(output_patch_path))
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+
+    # Write patch as utf-8
+    with open(output_patch_path, "w", encoding="utf-8") as f:
+        f.writelines(patch_lines)
+
+    return output_patch_path
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Submit changes for review")
+    parser.add_argument("-f", "--force", action="store_true", help="Force submit without review")
+    args = parser.parse_args()
+
+    repo_root = registry.get("ROOT", os.getenv("ROOT"))
+    assert repo_root
+
+    concise_path = os.path.join(repo_root, "concise.py")
+
+    assert os.path.exists(concise_path), f"You need to generate a file located at {concise_path} to submit and end the task"
+    
+    # build a github patch that announces this file
+    file_to_path(concise_path, os.path.join(repo_root, '/root/model.patch'))
+
+    print("<<SWE_AGENT_SUBMISSION>>")
+    print('Exiting')
+
+if __name__ == "__main__":
+    # There are some super strange "ascii can't decode x" errors when printing to the terminal
+    # that can be solved with setting the default encoding for stdout
+    # (note that python3.6 doesn't have the reconfigure method)
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    main()
