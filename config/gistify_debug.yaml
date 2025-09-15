@@ -12,46 +12,46 @@ agent:
       <uploaded_files>
       {{working_dir}}
       </uploaded_files>
-      I've uploaded a python code repository in the directory {{working_dir}}. 
-      Your task is to create a **self-contained, minimal, and executable** version of the original test file when running command:\n"
+      I've uploaded a python code repository in the directory {{working_dir}}.
+      I am trying to debug parts of the codebase. Specifically, I wrote a small test that executes the parts of the codebase I want to debug.
+
+      Your task is to create a **self-contained, minimal, and executable** version of the original test when running the command:\n"
 
       `{{problem_statement}}`
 
-      This new file should:
+      It is crucial that you leverage the existing code for all methods and objects, so that once I have debugged the new file, I can easily integrate the changes back into the original codebase.
+      To help me easily integrate the changes back into the original codebase, this new file should
+
       1. **Include all executed code paths** — it must contain **all functions, classes, and code blocks that are actually executed** when the test file is run.
-      2. **Inline internal dependencies** — for any functions or classes imported from **within the same repository**, **copy their implementations directly into the new file**. 
+      2. At the top of each code snippet extracted form the codebase, add a comment indicating the original file path and line number where the code was extracted from, in the format:
+         `# From <relative_file_path>:<line_number>`
+         It is crucial that you follow this format; otherwise, the integration back into the original codebase will fail. 
+      3. **Preserve the original structure** — maintain the same structure as the original
+      4. **Inline internal dependencies** — for any functions or classes imported from **within the same repository**, **copy their implementations directly into the new file**.
       Do **not** use `import` statements for these internal dependencies
-      3. **Exclude unnecessary code** — remove:
+      5. **Exclude unnecessary code** — remove:
         * Any code (functions, variables, imports, etc.) that is **not executed** during the test run
         * Any `import` that is **unused** or only used by removed code
         * Unused `try-except` or `if-else` branches
 
-      4. **Preserve existing code lines** — do not modify lines of code unless you're removing them.
+      6. **Preserve existing code lines** — do not modify lines of code unless you're removing them.
       Avoid rewriting or reformatting. However, you can reformat when it requires modification such as if-else statement due to removal of certain lines.
-      5. **Ensure it is executable** — the generated file should run **without errors** as a standalone script.
-      6. **Do not modify the original file.** Only output the new file, called `concise.py`. The file should be saved in `{{working_dir}}`, the working directory.
-
-      You have a new tool called `trace_info` that can help you get the trace log when running specific pytest in the repository. Use this tool to understand the global information of codebase and identify which parts of the code are executed when running the test file.
+      7. **Ensure it is executable** — the generated file should run **without errors** as a standalone script.
+      8. **Do not modify the original file.** Only output the new file, called `concise.py`. The file should be saved in `{{working_dir}}`, the working directory.
 
       Your thinking should be thorough and so it's fine if it's very long.
+      You can revify the code by running the pytest command again after creating the file, and ensuring that the output matches the original command `{{problem_statement}}`.
+
+      9. Lastly, make sure that the generated file contains the original test. DO NOT CHANGE THE FUNCTION SIGNATURE OF THE TEST.
+
+      ***before sumitting, run the command `pytest concise.py` and ensure it indicates the same output as the original command `{{problem_statement}}` ***
+
     next_step_template: |-
       OBSERVATION:
       {{observation}}
     next_step_no_output_template: |-
       Your command ran successfully and did not produce any output.
   tools:
-    trace_info:
-      docstring: returns the trace log when running specific pytest ('pytest_test_name') in the requested ('repo_name') repository
-      signature: trace_info <repo_name> <pytest_test_name>
-      arguments:
-        - name: repo_name
-          type: string
-          description: name of the repository to run the pytest.
-          required: true
-        - name: pytest_test_name
-          type: string
-          description: name of the pytest to get the trace log.
-          required: true
     env_variables:
       PAGER: cat
       MANPAGER: cat
@@ -63,7 +63,6 @@ agent:
       - path: tools/registry
       - path: tools/edit_anthropic
       - path: tools/gistify_submit
-      - path: tools/tracing
     registry_variables:
       USE_FILEMAP: "true"
       SUBMIT_REVIEW_MESSAGES:

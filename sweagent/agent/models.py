@@ -302,6 +302,8 @@ class CopilotClaudeModelConfig(GenericAPIModelConfig):
         "gpt-4.1-nano-2025-04-14",
         "oswe-vscode",
         "gpt-4.1-oswe-control",
+        "gpt-5",
+        "gpt-5-mini"
     ] = Field(default="claude-sonnet-4", description="Model name.")
 
     api_base: str | None = Field(
@@ -913,21 +915,21 @@ class AzureLLMModel(LiteLLMModel):
 
     # All deployments that are available via the public TRAPI endpoint
     # AZURE_SUPPORTED_MODELS = ["gpt-4o", "o3", "o3-mini", "o4-mini", "gpt-4.1", "gpt-4.5-preview", "o1", "gpt-4.1-mini"]
-    AZURE_SUPPORTED_MODELS = ["o3", "o3-mini", "o4-mini", "gpt-4.1", "gpt-4.5-preview", "o1", "gpt-4.1-mini", "trapi-gpt-5", "trapi-gpt-5-mini", "trapi-gpt-5-nano"]
+    AZURE_SUPPORTED_MODELS = ["o3", "o3-mini", "o4-mini", "gpt-4.1", "gpt-4.5-preview", "o1", "trapi-gpt-4.1-mini", "trapi-gpt-5", "trapi-gpt-5-mini", "trapi-gpt-5-nano", "trapi-gpt-4o"]
 
     _MODEL_META: dict[str, tuple[str, str, str]] = {
         #  name      -> (version,               instance,       api_version)
-        # "gpt-4o":  ("2024-05-13", "gcr/preview", "2024-10-21"),
         "o3":      ("2025-04-16", "msrne/shared", "2025-04-01-preview"),
         "o3-mini": ("2025-01-31", "msrne/shared", "2025-04-01-preview"),
         "o4-mini": ("2025-04-16", "msrne/shared", "2025-04-01-preview"),
-        "gpt-4.1": ("2025-04-14", "gcr/shared", "2025-04-01-preview"),
+        "gpt-4.1": ("2025-04-14", "msrne/shared", "2025-04-01-preview"),
         "gpt-4.5-preview": ("2025-02-27", "msrne/shared", "2025-04-01-preview"),
         "o1": ("2024-12-17", "msrne/shared", "2025-04-01-preview"),
-        "gpt-4.1-mini": ("2025-04-14", "msrne/shared", "2025-04-01-preview"),
-        "trapi-gpt-5": ("2025-08-07", "gcr/shared", "2024-12-01-preview"),
-        "trapi-gpt-5-mini": ("2025-08-07", "gcr/shared", "2024-12-01-preview"),
-        "trapi-gpt-5-nano": ("2025-08-07", "gcr/shared", "2024-12-01-preview")
+        "trapi-gpt-4.1-mini": ("2025-04-14", "msrne/shared", "2025-04-01-preview"),
+        "trapi-gpt-5": ("2025-08-07", "msrne/shared", "2024-10-21"),
+        "trapi-gpt-5-mini": ("2025-08-07", "msrne/shared", "2024-10-21"),
+        "trapi-gpt-5-nano": ("2025-08-07", "msrne/shared", "2024-10-21"),
+        "trapi-gpt-4o":  ("2024-05-13", "msrne/shared", "2024-10-21"),
 
     }
 
@@ -1109,6 +1111,8 @@ class CopilotClaudeModel(LiteLLMModel):
         "gpt-4.1-nano-2025-04-14",
         "oswe-vscode",
         "gpt-4.1-oswe-control",
+        "gpt-5",
+        "gpt-5-mini"
     ]
 
     # Models that should not receive temperature/top_p (reasoning / deterministic styles)
@@ -1117,6 +1121,8 @@ class CopilotClaudeModel(LiteLLMModel):
         "o3-mini-paygo",
         "o3-2025-04-16",
         "o4-mini-2025-04-16",
+        "gpt-5-mini",
+        "gpt-5"
     ]
 
     def __init__(self, args: CopilotClaudeModelConfig, tools: ToolConfig):
@@ -1150,7 +1156,7 @@ class CopilotClaudeModel(LiteLLMModel):
             # Get the vscode-copilot directory path
             vscode_copilot_dir = (
                 self.config.vscode_copilot_dir or 
-                os.environ.get("VSCODE_COPILOT_DIR", os.path.expanduser("~/repo/vscode-copilot"))
+                os.environ.get("VSCODE_COPILOT_DIR", os.path.expanduser("~/vscode-copilot"))
             )
             vscode_copilot_dir = os.path.expanduser(vscode_copilot_dir)
             if not os.path.exists(vscode_copilot_dir):

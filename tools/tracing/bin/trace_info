@@ -2,15 +2,13 @@
 import json
 import sys
 
-repo = sys.argv[1]
-pytest = sys.argv[2]
-
-print(f"Getting trace info for {pytest} in {repo}")
 
 try:
-    with open(f"/root/tools/tracing/{repo}_trace_output.json") as f:
-        trace_info = json.load(f)[pytest]
-        print(f"The trace information contains the 'location' of current file, 'parent_location', which indicates which file called the current step, 'name' of the function, and 'arguments' being used. Here is the tracing logs: {trace_info}")
+    with open(f"/root/trace_output.json") as f:
+        trace_info = json.load(f)
+        print(
+            f"The trace information contains the 'location' of current file, 'parent_location', which indicates which file called the current step, 'name' of the function, and 'arguments' being used. Here is the tracing logs: {trace_info}"
+        )
 except:
     print("No trace info found")
-    trace_info = [] 
+    trace_info = []
