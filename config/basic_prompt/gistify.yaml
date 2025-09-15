@@ -43,8 +43,8 @@ agent:
         * Do not hard-code outputs 
         * Do not replace test logic with simplified equivalents 
       6. Preserve test behavior
-        * The test function must remain unchanged, except for import adjustments needed to reference inlined code.
-        * The output, exceptions, or exit codes must match the original run of {{problem_statement}}.
+        * The test function must remain **unchanged**, except for import adjustments needed to reference inlined code.
+        * The output, exceptions, or exit codes must match the original run of {{problem_statement}}. Please note that I want the file to match the original run (e.g., if the original run is pytest, I am going to run with pytest not python command)
       7. Do not execute the code
         * Do not run or simulate the program (e.g., with `pytest`, `python`, or any other tools) 
 
