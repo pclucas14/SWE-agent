@@ -1,0 +1,4 @@
+tools:
+  trace_info:
+    signature: "trace_info"
+    docstring: "returns the trace log when running the `pytest` command for the test currently being debugged in the given repo"

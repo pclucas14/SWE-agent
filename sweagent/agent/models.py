@@ -21,12 +21,15 @@ import litellm
 import litellm.types.utils
 from openai import AzureOpenAI, OpenAI, NOT_GIVEN
 import openai  # ← NEW: for exception classes
-from azure.identity import (
-    ChainedTokenCredential,
-    AzureCliCredential,
-    DefaultAzureCredential,
-    get_bearer_token_provider,
-)
+try:
+    from azure.identity import (
+        ChainedTokenCredential,
+        AzureCliCredential,
+        DefaultAzureCredential,
+        get_bearer_token_provider,
+    )
+except:
+    pass
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import ConfigDict, Field, SecretStr
 from swerex.exceptions import SwerexException
@@ -299,6 +302,8 @@ class CopilotClaudeModelConfig(GenericAPIModelConfig):
         "gpt-4.1-nano-2025-04-14",
         "oswe-vscode",
         "gpt-4.1-oswe-control",
+        "gpt-5",
+        "gpt-5-mini"
     ] = Field(default="claude-sonnet-4", description="Model name.")
 
     api_base: str | None = Field(
@@ -311,7 +316,7 @@ class CopilotClaudeModelConfig(GenericAPIModelConfig):
     )
     
     vscode_copilot_dir: str | None = Field(
-        default="~/repo/vscode-copilot",
+        default=None,
         description="Path to vscode-copilot directory. If not provided, will use VSCODE_COPILOT_DIR env var or ~/vscode-copilot"
     )
     
@@ -764,7 +769,7 @@ class LiteLLMModel(AbstractModel):
             response: litellm.types.utils.ModelResponse = litellm.completion(  # type: ignore
                 model=self.config.name,
                 messages=messages,
-                temperature=self.config.temperature if temperature is None else temperature,
+                temperature=1, #self.config.temperature if temperature is None else temperature,
                 top_p=self.config.top_p,
                 api_version=self.config.api_version,
                 api_key=self.config.choose_api_key(),
@@ -909,22 +914,27 @@ class AzureLLMModel(LiteLLMModel):
     """
 
     # All deployments that are available via the public TRAPI endpoint
-    AZURE_SUPPORTED_MODELS = ["gpt-4o", "o3", "o3-mini", "o4-mini", "gpt-4.1", "gpt-4.5-preview", "o1", "gpt-4.1-mini"]
+    # AZURE_SUPPORTED_MODELS = ["gpt-4o", "o3", "o3-mini", "o4-mini", "gpt-4.1", "gpt-4.5-preview", "o1", "gpt-4.1-mini"]
+    AZURE_SUPPORTED_MODELS = ["o3", "o3-mini", "o4-mini", "gpt-4.1", "gpt-4.5-preview", "o1", "trapi-gpt-4.1-mini", "trapi-gpt-5", "trapi-gpt-5-mini", "trapi-gpt-5-nano", "trapi-gpt-4o"]
 
     _MODEL_META: dict[str, tuple[str, str, str]] = {
         #  name      -> (version,               instance,       api_version)
-        "gpt-4o":  ("2024-05-13", "gcr/preview", "2024-10-21"),
         "o3":      ("2025-04-16", "msrne/shared", "2025-04-01-preview"),
         "o3-mini": ("2025-01-31", "msrne/shared", "2025-04-01-preview"),
         "o4-mini": ("2025-04-16", "msrne/shared", "2025-04-01-preview"),
-        "gpt-4.1": ("2025-04-14", "gcr/shared", "2025-04-01-preview"),
+        "gpt-4.1": ("2025-04-14", "msrne/shared", "2025-04-01-preview"),
         "gpt-4.5-preview": ("2025-02-27", "msrne/shared", "2025-04-01-preview"),
         "o1": ("2024-12-17", "msrne/shared", "2025-04-01-preview"),
-        "gpt-4.1-mini": ("2025-04-14", "msrne/shared", "2025-04-01-preview"),
+        "trapi-gpt-4.1-mini": ("2025-04-14", "msrne/shared", "2025-04-01-preview"),
+        "trapi-gpt-5": ("2025-08-07", "msrne/shared", "2024-10-21"),
+        "trapi-gpt-5-mini": ("2025-08-07", "msrne/shared", "2024-10-21"),
+        "trapi-gpt-5-nano": ("2025-08-07", "msrne/shared", "2024-10-21"),
+        "trapi-gpt-4o":  ("2024-05-13", "msrne/shared", "2024-10-21"),
+
     }
 
     # Models that don't support custom temperature or top_p
-    NOT_TEMPERATURE_MODELS = ["o1", "o3", "o3-mini", "o4-mini"]
+    NOT_TEMPERATURE_MODELS = ["o1", "o3", "o3-mini", "o4-mini", "trapi-gpt-5", "trapi-gpt-5-mini", "trapi-gpt-5-nano"]
 
     def __init__(self, args: GenericAPIModelConfig, tools: ToolConfig):
         if args.name not in self.AZURE_SUPPORTED_MODELS:
@@ -933,7 +943,7 @@ class AzureLLMModel(LiteLLMModel):
         super().__init__(args, tools)
 
         version, instance, self._api_version = self._MODEL_META[self.config.name]
-        self._deployment_name = re.sub(r"[^a-zA-Z0-9._-]", "", f"{self.config.name}_{version}")
+        self._deployment_name = re.sub(r"[^a-zA-Z0-9._-]", "", f"{self.config.name.replace('trapi-', '')}_{version}")
         self._endpoint = f"https://trapi.research.microsoft.com/{instance}"
 
         self._credential = get_bearer_token_provider(
@@ -1101,6 +1111,8 @@ class CopilotClaudeModel(LiteLLMModel):
         "gpt-4.1-nano-2025-04-14",
         "oswe-vscode",
         "gpt-4.1-oswe-control",
+        "gpt-5",
+        "gpt-5-mini"
     ]
 
     # Models that should not receive temperature/top_p (reasoning / deterministic styles)
@@ -1109,6 +1121,8 @@ class CopilotClaudeModel(LiteLLMModel):
         "o3-mini-paygo",
         "o3-2025-04-16",
         "o4-mini-2025-04-16",
+        "gpt-5-mini",
+        "gpt-5"
     ]
 
     def __init__(self, args: CopilotClaudeModelConfig, tools: ToolConfig):
@@ -1142,7 +1156,7 @@ class CopilotClaudeModel(LiteLLMModel):
             # Get the vscode-copilot directory path
             vscode_copilot_dir = (
                 self.config.vscode_copilot_dir or 
-                os.environ.get("VSCODE_COPILOT_DIR", os.path.expanduser("~/repo/vscode-copilot"))
+                os.environ.get("VSCODE_COPILOT_DIR", os.path.expanduser("~/vscode-copilot"))
             )
             vscode_copilot_dir = os.path.expanduser(vscode_copilot_dir)
             if not os.path.exists(vscode_copilot_dir):
@@ -1183,7 +1197,7 @@ class CopilotClaudeModel(LiteLLMModel):
                 self.config.vscode_copilot_dir or 
                 os.environ.get("VSCODE_COPILOT_DIR", os.path.expanduser("~/repo/vscode-copilot"))
             )
-            
+
             env_file_path = os.path.expanduser(os.path.join(vscode_copilot_dir, ".env"))
 
             # Try loading .env file if HMAC_SECRET not already set
@@ -1354,6 +1368,7 @@ class CopilotClaudeModel(LiteLLMModel):
 def get_model(args: ModelConfig, tools: ToolConfig) -> AbstractModel:
     """Returns correct model object given arguments and commands"""
     # Convert GenericAPIModelConfig to specific model config if needed
+    
     if isinstance(args, GenericAPIModelConfig) and not isinstance(
         args, HumanModelConfig | HumanThoughtModelConfig | ReplayModelConfig | InstantEmptySubmitModelConfig | CopilotClaudeModelConfig
     ):

@@ -2,7 +2,8 @@
 # This template is heavily inspired by anthropic's computer use demo, but you can use
 # it with any LM.
 agent:
-  type: default          # <-- new ─ tells Pydantic which variant to use
+  type: max_step # default          # <-- new ─ tells Pydantic which variant to use
+  max_steps: 50
   model: {}
   templates:
     system_template: |-
@@ -11,22 +12,27 @@ agent:
       <uploaded_files>
       {{working_dir}}
       </uploaded_files>
-      I've uploaded a python code repository in the directory {{working_dir}}. Consider the following PR description:
+      I've uploaded a python code repository in the directory {{working_dir}}. 
+      Your task is to create a **self-contained, minimal, and executable** version of the original test file when running command:\n"
+      
+      `{{problem_statement}}`
 
-      <pr_description>
-      {{problem_statement}}
-      </pr_description>
+      This new file should:
+      1. **Include all executed code paths** — it must contain **all functions, classes, and code blocks that are actually executed** when the test file is run.
+      2. **Inline internal dependencies** — for any functions or classes imported from **within the same repository**, **copy their implementations directly into the new file**. 
+      Do **not** use `import` statements for these internal dependencies
+      3. **Exclude unnecessary code** — remove:
+        * Any code (functions, variables, imports, etc.) that is **not executed** during the test run
+        * Any `import` that is **unused** or only used by removed code
+        * Unused `try-except` or `if-else` branches
+      
+      4. **Preserve existing code lines** — do not modify lines of code unless you're removing them.
+      Avoid rewriting or reformatting. However, you can reformat when it requires modification such as if-else statement due to removal of certain lines.
+      5. **Ensure it is executable** — the generated file should run **without errors** as a standalone script.
+      6. **Do not modify the original file.** Only output the new file, called `concise.py`. The file should be saved in `{{working_dir}}`, the working directory.
 
-      Can you help me implement the necessary changes to the repository so that the requirements specified in the <pr_description> are met?
-      I've already taken care of all changes to any of the test files described in the <pr_description>. This means you DON'T have to modify the testing logic or any of the tests in any way!
-      Your task is to make the minimal changes to non-tests files in the {{working_dir}} directory to ensure the <pr_description> is satisfied.
-      Follow these steps to resolve the issue:
-      1. As a first step, it might be a good idea to find and read code relevant to the <pr_description>
-      2. Create a script to reproduce the error and execute it with `python <filename.py>` using the bash tool, to confirm the error
-      3. Edit the sourcecode of the repo to resolve the issue
-      4. Rerun your reproduce script and confirm that the error is fixed!
-      5. Think about edgecases and make sure your fix handles them as well
       Your thinking should be thorough and so it's fine if it's very long.
+
     next_step_template: |-
       OBSERVATION:
       {{observation}}
@@ -43,7 +49,7 @@ agent:
     bundles:
       - path: tools/registry
       - path: tools/edit_anthropic
-      - path: tools/review_on_submit_m
+      - path: tools/gistify_submit
     registry_variables:
       USE_FILEMAP: 'true'
       SUBMIT_REVIEW_MESSAGES:
