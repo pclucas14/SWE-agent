@@ -459,6 +459,7 @@ class EditTool:
 
             out = subprocess.run(
                 rf"find {path} -maxdepth 2 -not -path '*/\.*'",
+                shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
