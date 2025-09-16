@@ -22,9 +22,6 @@ def main() -> None:
 
     patch_path = Path("/root/model.patch")
 
-    if not os.path.exists(patch_path):
-        patch_path = Path(os.path.join(repo_root, "model.patch"))
-
     subprocess.run(
         f"git add -A && git diff --cached > {patch_path}",
         shell=True,
