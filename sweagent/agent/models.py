@@ -1307,23 +1307,41 @@ class CopilotClaudeModel(LiteLLMModel):
             raise
         except openai.OpenAIError:
             raise
-        # Convert response to SWE-agent format
-        outputs: list[dict] = []
-        combined_message = ""
-        combined_tool_calls = []
-        for choice in response.choices:
-            if choice.message.content:
-                combined_message += choice.message.content
-            if self.tools.use_function_calling and getattr(choice.message, "tool_calls", None):
-                combined_tool_calls.extend([tc.model_dump() for tc in choice.message.tool_calls])
-        out: dict[str, Any] = {"message": combined_message}
-        if combined_tool_calls:
-            out["tool_calls"] = combined_tool_calls
-        outputs = [out]
-        if getattr(response, "usage", None) is not None and getattr(response.usage, "completion_tokens", None) is not None:
-            output_tokens = int(response.usage.completion_tokens or 0)
-        else:
-            output_tokens = sum(litellm.utils.token_counter(text=o["message"], model=self.config.name) for o in outputs)
+
+        if "claude" in self.config.name:
+            # Convert response to SWE-agent format
+            if len(response.choices) > 1:
+                # Take first content
+                _message = copy.deepcopy(response.choices[0].message)
+                
+                # Collect tool_calls from all choice messages
+                merged_tool_calls = []
+                for choice in response.choices:
+                    if hasattr(choice.message, 'tool_calls') and choice.message.tool_calls:
+                        merged_tool_calls.extend(choice.message.tool_calls)
+                
+                # If no tool_calls were found, remove the empty list
+                if len(merged_tool_calls) > 0:
+                    _message.tool_calls = merged_tool_calls
+
+                response.choices[0].message = _message
+
+        # copied from above _single_query()
+        choices: litellm.types.utils.Choices = response.choices  # type: ignore
+        n_choices = n if n is not None else 1
+        outputs = []
+        output_tokens = 0
+        for i in range(n_choices):
+            output = choices[i].message.content or ""
+            output_tokens += litellm.utils.token_counter(text=output, model=self.config.name)
+            output_dict = {"message": output}
+            if self.tools.use_function_calling:
+                if response.choices[i].message.tool_calls:  # type: ignore
+                    tool_calls = [call.to_dict() for call in response.choices[i].message.tool_calls]  # type: ignore
+                else:
+                    tool_calls = []
+                output_dict["tool_calls"] = tool_calls
+            outputs.append(output_dict)
         self._update_stats(input_tokens=input_tokens, output_tokens=output_tokens, cost=0.0)
         return outputs
 
