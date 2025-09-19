@@ -1326,22 +1326,23 @@ class CopilotClaudeModel(LiteLLMModel):
 
                 response.choices[0].message = _message
 
-        # copied from above _single_query()
-        choices: litellm.types.utils.Choices = response.choices  # type: ignore
-        n_choices = n if n is not None else 1
-        outputs = []
-        output_tokens = 0
-        for i in range(n_choices):
-            output = choices[i].message.content or ""
-            output_tokens += litellm.utils.token_counter(text=output, model=self.config.name)
-            output_dict = {"message": output}
-            if self.tools.use_function_calling:
-                if response.choices[i].message.tool_calls:  # type: ignore
-                    tool_calls = [call.to_dict() for call in response.choices[i].message.tool_calls]  # type: ignore
-                else:
-                    tool_calls = []
-                output_dict["tool_calls"] = tool_calls
-            outputs.append(output_dict)
+        # copied from trapi._single_query()
+        # Convert response → SWE-agent format                             #
+        outputs: list[dict] = []
+        for choice in response.choices:  # type: ignore[attr-defined]
+            out: dict[str, Any] = {"message": choice.message.content or ""}
+            if self.tools.use_function_calling and getattr(choice.message, "tool_calls", None):
+                out["tool_calls"] = [tc.model_dump() for tc in choice.message.tool_calls]  # type: ignore
+            outputs.append(out)
+
+        # Prefer server-reported token usage
+        if getattr(response, "usage", None) is not None and getattr(response.usage, "completion_tokens", None) is not None:
+            output_tokens = int(response.usage.completion_tokens or 0)
+        else:
+            # Fallback: approximate with litellm token counter
+            output_tokens = sum(
+                litellm.utils.token_counter(text=o["message"], model=self.config.name) for o in outputs
+            )
         self._update_stats(input_tokens=input_tokens, output_tokens=output_tokens, cost=0.0)
         return outputs
 
