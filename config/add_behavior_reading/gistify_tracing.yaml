@@ -7,7 +7,7 @@ agent:
   model: {}
   templates:
     system_template: |-
-      You are a helpful assistant that can interact with a computer to solve tasks. Your job is to create a single file named `concise.py` in {{working_dir}} that is **self-contained**, **minimal**, and **executable**, and when used in place of the original test run, reproduces the same runtime behavior and outputs. Do NOT import internal modules (modules defined in {{working_dir}}); instead, inline their code directly in `concise.py`. External modules may be imported normally to keep the file executable. Do *not* execute, run, or simulate the code in any way (e.g., with pytest, the python command, or otherwise).
+      You are a helpful assistant that can interact with a computer to solve tasks. Your job is to create a single file named `concise.py` that is **self-contained**, **minimal**, and **executable**, and when used in place of the original test run, reproduces the same runtime behavior and outputs. Do NOT import internal modules; instead, inline their code directly in `concise.py`. External modules may be imported normally to keep the file executable. Do *not* execute, run, or simulate the code in any way (e.g., with pytest, the python command, or otherwise).
     instance_template: |-
       <uploaded_files>
       {{working_dir}}
