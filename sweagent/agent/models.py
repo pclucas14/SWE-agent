@@ -1252,6 +1252,14 @@ class CopilotClaudeModel(LiteLLMModel):
         for m in messages_no_cache_control:
             if "cache_control" in m:
                 del m["cache_control"]
+        
+        # if using gpt models on CAPI, extract history content so CAPI endpoint can work properly:
+        # list[dict[str, Any]] -> str
+        if "gpt" in self.config.name.lower():
+            for i in range(len(messages_no_cache_control)):
+                if messages_no_cache_control[i]["role"] == "tool":
+                    if isinstance(messages_no_cache_control[i]["content"], list):
+                        messages_no_cache_control[i]["content"] = messages_no_cache_control[i]["content"][0]['text']
 
         input_tokens = litellm.utils.token_counter(
             messages=messages_no_cache_control,
@@ -1308,7 +1316,7 @@ class CopilotClaudeModel(LiteLLMModel):
         except openai.OpenAIError:
             raise
 
-        if "claude" in self.config.name:
+        if "claude" in self.config.name.lower():
             # Convert response to SWE-agent format
             if len(response.choices) > 1:
                 # Take first content
