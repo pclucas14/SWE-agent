@@ -2,13 +2,36 @@
 import json
 import sys
 
+THRESHOLD = 1_000
+
+
+def maybe_truncate(traces):
+    # whenever the trace is too long, we just return
+    if len(traces) > THRESHOLD:
+        print(
+            f"The trace has {len(traces)} entries, we will instead only show unique entries in order of appearance."
+        )
+        seen = set()
+        formatted = []
+        for i, item in enumerate(traces):
+            s = str(item)
+            if s not in seen:
+                seen.add(s)
+                formatted.append(f"entry {i} : {s}")
+        return formatted
+
+    return traces
+
 
 try:
-    with open(f"/root/trace_output.json") as f:
+    with open("/root/trace_output.json") as f:
         trace_info = json.load(f)
         print(
-            f"The trace information contains the 'location' of current file, 'parent_location', which indicates which file called the current step, 'name' of the function, and 'arguments' being used. Here is the tracing logs: {trace_info}"
+            "The trace information contains the 'location' (file_path:line_no) of current file, and 'name' of the function, and the function call 'type'. Here is the tracing logs:"
         )
+        trace_info = maybe_truncate(trace_info)
+        for item in trace_info:
+            print(item)
 except:
     print("No trace info found")
     trace_info = []
