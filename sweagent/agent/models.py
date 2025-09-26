@@ -1252,6 +1252,14 @@ class CopilotClaudeModel(LiteLLMModel):
         for m in messages_no_cache_control:
             if "cache_control" in m:
                 del m["cache_control"]
+        
+        # if using gpt models on CAPI, extract history content so CAPI endpoint can work properly:
+        # list[dict[str, Any]] -> str
+        if "gpt" in self.config.name.lower():
+            for i in range(len(messages_no_cache_control)):
+                if messages_no_cache_control[i]["role"] == "tool":
+                    if isinstance(messages_no_cache_control[i]["content"], list):
+                        messages_no_cache_control[i]["content"] = messages_no_cache_control[i]["content"][0]['text']
 
         input_tokens = litellm.utils.token_counter(
             messages=messages_no_cache_control,
@@ -1307,23 +1315,42 @@ class CopilotClaudeModel(LiteLLMModel):
             raise
         except openai.OpenAIError:
             raise
-        # Convert response to SWE-agent format
+
+        if "claude" in self.config.name.lower():
+            # Convert response to SWE-agent format
+            if len(response.choices) > 1:
+                # Take first content
+                _message = copy.deepcopy(response.choices[0].message)
+                
+                # Collect tool_calls from all choice messages
+                merged_tool_calls = []
+                for choice in response.choices:
+                    if hasattr(choice.message, 'tool_calls') and choice.message.tool_calls:
+                        merged_tool_calls.extend(choice.message.tool_calls)
+                
+                # If no tool_calls were found, remove the empty list
+                if len(merged_tool_calls) > 0:
+                    _message.tool_calls = merged_tool_calls
+
+                response.choices[0].message = _message
+
+        # copied from trapi._single_query()
+        # Convert response → SWE-agent format                             #
         outputs: list[dict] = []
-        combined_message = ""
-        combined_tool_calls = []
-        for choice in response.choices:
-            if choice.message.content:
-                combined_message += choice.message.content
+        for choice in response.choices:  # type: ignore[attr-defined]
+            out: dict[str, Any] = {"message": choice.message.content or ""}
             if self.tools.use_function_calling and getattr(choice.message, "tool_calls", None):
-                combined_tool_calls.extend([tc.model_dump() for tc in choice.message.tool_calls])
-        out: dict[str, Any] = {"message": combined_message}
-        if combined_tool_calls:
-            out["tool_calls"] = combined_tool_calls
-        outputs = [out]
+                out["tool_calls"] = [tc.model_dump() for tc in choice.message.tool_calls]  # type: ignore
+            outputs.append(out)
+
+        # Prefer server-reported token usage
         if getattr(response, "usage", None) is not None and getattr(response.usage, "completion_tokens", None) is not None:
             output_tokens = int(response.usage.completion_tokens or 0)
         else:
-            output_tokens = sum(litellm.utils.token_counter(text=o["message"], model=self.config.name) for o in outputs)
+            # Fallback: approximate with litellm token counter
+            output_tokens = sum(
+                litellm.utils.token_counter(text=o["message"], model=self.config.name) for o in outputs
+            )
         self._update_stats(input_tokens=input_tokens, output_tokens=output_tokens, cost=0.0)
         return outputs
 
